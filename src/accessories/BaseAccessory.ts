@@ -28,7 +28,7 @@ export class BaseAccessory {
     this.infoService = infoService;
   }
 
-  identify(callback) {
+  identify(callback: () => void) {
     callback();
   }
 }

@@ -1,8 +1,8 @@
 import { BaseAccessory } from './BaseAccessory';
 import { getPowerState, setPowerState } from './Callbacks';
 
-export class GenericSwitch extends BaseAccessory {
-  lightBulbService: any;
+export class Switch extends BaseAccessory {
+  switchService: any;
   constructor(log: Function, accessoryConfig: { id: Number; type: string; name: string; manufacturer: string; model: string; }, platform: any) {
     super(log, accessoryConfig, platform);
   }
@@ -20,7 +20,7 @@ export class GenericSwitch extends BaseAccessory {
       .on('get', getPowerState.bind(this))
       .on('set', setPowerState.bind(this));
 
-    this.lightBulbService = switchService;
+    this.switchService = switchService;
 
     api.on(`Event-${this.type}-${this.id}-Set-Power`, (value: any) => {
       powerState.updateValue(Boolean(value));

@@ -1,3 +1,27 @@
+export function getSensorState(callback: (arg0: any, arg1: boolean) => void) {
+  const { platform } = this;
+  const { api } = platform;
+  const jsonMessage = `${JSON.stringify({
+    DeviceId: this.id,
+    DeviceType: this.type,
+    MessageType: 'Request',
+    Operation: 'Get',
+    Property: 'sensorState'
+  })}||`;
+  platform.socket.write(jsonMessage);
+  platform.socket.pendingGetRequests.set(
+    `${this.type}-${this.id}-sensorState`,
+    jsonMessage
+  );
+
+  // handle response to `Get` sensorState requests
+  api.once(`Response-${this.type}-${this.id}-Get-sensorState`, (value: any) => {
+    platform.socket.pendingGetRequests.delete(`${this.type}-${this.id}-sensorState`);
+    const sensorState = Boolean(value);
+    callback(null, sensorState);
+  });
+}
+
 export function getPowerState(callback: (arg0: any, arg1: boolean) => void) {
   const { platform } = this;
   const { api } = platform;
