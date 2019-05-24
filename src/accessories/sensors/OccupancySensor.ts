@@ -1,9 +1,25 @@
-import { BaseAccessory } from './BaseAccessory';
-import { getSensorState } from './Callbacks';
+import { BaseAccessory } from "../BaseAccessory";
+import { getSensorState } from "../Callbacks";
 
 export class OccupancySensor extends BaseAccessory {
   occupancySensor: any;
-  constructor(log: Function, accessoryConfig: { id: Number; type: string; name: string; manufacturer: string; model: string; }, platform: any) {
+  constructor({
+    log,
+    accessoryConfig,
+    platform
+  }: {
+    log: Function;
+    accessoryConfig: {
+      id: Number;
+      type: string;
+      name: string;
+      manufacturer: string;
+      model: string;
+      serialnumber: string;
+      frmwarerevision: string;
+    };
+    platform: any;
+  }) {
     super(log, accessoryConfig, platform);
   }
 
@@ -17,9 +33,9 @@ export class OccupancySensor extends BaseAccessory {
     const OccupancySensorService = new Service.OccupancySensor();
 
     //  Because OccupancyDetected's Characteristic is only 0 and 1, use powerState to avoid code redundancy.
-    const sensorState = OccupancySensorService
-      .getCharacteristic(Characteristic.OccupancyDetected)
-      .on('get', getSensorState.bind(this));
+    const sensorState = OccupancySensorService.getCharacteristic(
+      Characteristic.OccupancyDetected
+    ).on("get", getSensorState.bind(this));
 
     this.occupancySensor = OccupancySensorService;
 

@@ -22,6 +22,10 @@ export function getSensorState(callback: (arg0: any, arg1: boolean) => void) {
   });
 }
 
+/**
+ * this fun 
+ * @param callback 
+ */
 export function getPowerState(callback: (arg0: any, arg1: boolean) => void) {
   const { platform } = this;
   const { api } = platform;

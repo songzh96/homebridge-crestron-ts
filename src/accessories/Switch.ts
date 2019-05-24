@@ -1,9 +1,25 @@
-import { BaseAccessory } from './BaseAccessory';
-import { getPowerState, setPowerState } from './Callbacks';
+import { BaseAccessory } from "./BaseAccessory";
+import { getPowerState, setPowerState } from "./Callbacks";
 
 export class Switch extends BaseAccessory {
   switchService: any;
-  constructor(log: Function, accessoryConfig: { id: Number; type: string; name: string; manufacturer: string; model: string; }, platform: any) {
+  constructor({
+    log,
+    accessoryConfig,
+    platform
+  }: {
+    log: Function;
+    accessoryConfig: {
+      id: Number;
+      type: string;
+      name: string;
+      manufacturer: string;
+      model: string;
+      serialnumber: string;
+      frmwarerevision: string;
+    };
+    platform: any;
+  }) {
     super(log, accessoryConfig, platform);
   }
 
@@ -17,8 +33,8 @@ export class Switch extends BaseAccessory {
     const switchService = new Service.Switch();
     const powerState = switchService
       .getCharacteristic(Characteristic.On)
-      .on('get', getPowerState.bind(this))
-      .on('set', setPowerState.bind(this));
+      .on("get", getPowerState.bind(this))
+      .on("set", setPowerState.bind(this));
 
     this.switchService = switchService;
 
