@@ -1,40 +1,12 @@
-export function getSensorState(callback: (arg0: any, arg1: boolean) => void) {
-  const { platform } = this;
-  const { api } = platform;
-  const jsonMessage = `${JSON.stringify({
-    DeviceId: this.id,
-    DeviceType: this.type,
-    MessageType: 'Request',
-    Operation: 'Get',
-    Property: 'sensorState'
-  })}||`;
-  platform.socket.write(jsonMessage);
-  platform.socket.pendingGetRequests.set(
-    `${this.type}-${this.id}-sensorState`,
-    jsonMessage
-  );
-
-  // handle response to `Get` sensorState requests
-  api.once(`Response-${this.type}-${this.id}-Get-sensorState`, (value: any) => {
-    platform.socket.pendingGetRequests.delete(`${this.type}-${this.id}-sensorState`);
-    const sensorState = Boolean(value);
-    callback(null, sensorState);
-  });
-}
-
-/**
- * this fun 
- * @param callback 
- */
 export function getPowerState(callback: (arg0: any, arg1: boolean) => void) {
   const { platform } = this;
   const { api } = platform;
   const jsonMessage = `${JSON.stringify({
     DeviceId: this.id,
     DeviceType: this.type,
-    MessageType: 'Request',
-    Operation: 'Get',
-    Property: 'Power'
+    MessageType: "Request",
+    Operation: "Get",
+    Property: "Power"
   })}||`;
   platform.socket.write(jsonMessage);
   platform.socket.pendingGetRequests.set(
@@ -50,15 +22,18 @@ export function getPowerState(callback: (arg0: any, arg1: boolean) => void) {
   });
 }
 
-export function setPowerState(powered: any, callback: { (): void; (): void; (): void; (): void; }) {
+export function setPowerState(
+  powered: any,
+  callback: { (): void; (): void; (): void; (): void }
+) {
   const { platform } = this;
   const { api } = platform;
   const jsonMessage = `${JSON.stringify({
     DeviceId: this.id,
     DeviceType: this.type,
-    MessageType: 'Request',
-    Operation: 'Set',
-    Property: 'Power',
+    MessageType: "Request",
+    Operation: "Set",
+    Property: "Power",
     Value: powered ? 1 : 0
   })}||`;
 
@@ -86,13 +61,13 @@ export function setPowerState(powered: any, callback: { (): void; (): void; (): 
     Brightness characteristic. The above logic also applies to Fans and rotation
     speed.
    */
-  if ((this.type === 'LightDimmer' || this.type === 'Fan') && powered) {
+  if ((this.type === "LightDimmer" || this.type === "Fan") && powered) {
     let isLevelAlsoSet = false;
 
     if (
-      (this.type === 'LightDimmer' &&
+      (this.type === "LightDimmer" &&
         this.lightBulbService.characteristics[0].value) ||
-      (this.type === 'Fan' && this.fanService.characteristics[0].value)
+      (this.type === "Fan" && this.fanService.characteristics[0].value)
     ) {
       callback();
 
@@ -143,9 +118,9 @@ export function getLightLevel(callback: (arg0: any, arg1: number) => void) {
   const jsonMessage = `${JSON.stringify({
     DeviceId: this.id,
     DeviceType: this.type,
-    MessageType: 'Request',
-    Operation: 'Get',
-    Property: 'Level'
+    MessageType: "Request",
+    Operation: "Get",
+    Property: "Level"
   })}||`;
 
   platform.socket.write(jsonMessage);
@@ -167,9 +142,9 @@ export function setLightLevel(percentLevel: number, callback: () => void) {
   const jsonMessage = `${JSON.stringify({
     DeviceId: this.id,
     DeviceType: this.type,
-    MessageType: 'Request',
-    Operation: 'Set',
-    Property: 'Level',
+    MessageType: "Request",
+    Operation: "Set",
+    Property: "Level",
     Value: (percentLevel / 100) * 65535
   })}||`;
 
@@ -186,50 +161,125 @@ export function setLightLevel(percentLevel: number, callback: () => void) {
   });
 }
 
-export function getFanSpeed(callback: (arg0: any, arg1: any) => void) {
+/**
+ * getPercentageValue
+ * include this Characteristic
+ * ---- BatteryLevel,Brightness,CarbonMonoxideLevel,CarbonMonoxidePeakLevel
+ * ---- CurrentPosition,CurrentRelativeHumidity ,CurrentTemperature,FilterLifeLevel
+ * ---- RelativeHumidityDehumidifierThreshold 
+ * ---- RelativeHumidityHumidifierThreshold 
+ * ---- RotationSpeed
+ * ---- Saturation TargetPosition TargetRelativeHumidity Volume WaterLevel 
+ * @param callback 
+ */
+export function getPercentageValue(callback: (arg0: any, arg1: Number) => void) {
   const { platform } = this;
   const { api } = platform;
   const jsonMessage = `${JSON.stringify({
     DeviceId: this.id,
     DeviceType: this.type,
-    MessageType: 'Request',
-    Operation: 'Get',
-    Property: 'Speed'
+    MessageType: "Request",
+    Operation: "Get",
+    Property: "PerValue"
   })}||`;
   platform.socket.write(jsonMessage);
   platform.socket.pendingGetRequests.set(
-    `${this.type}-${this.id}-Speed`,
+    `${this.type}-${this.id}-PerValue`,
     jsonMessage
   );
 
-  api.once(`Response-${this.type}-${this.id}-Get-Speed`, (value: any) => {
-    platform.socket.pendingGetRequests.delete(`${this.type}-${this.id}-Speed`);
-    const speed = value;
-    callback(null, speed);
+  api.once(`Response-${this.type}-${this.id}-Get-PerValue`, (value: Number) => {
+    platform.socket.pendingGetRequests.delete(`${this.type}-${this.id}-PerValue`);
+    const pervalue = value;
+    callback(null, pervalue);
   });
 }
 
-export function setFanSpeed(speed: any, callback: () => void) {
+/**
+ * setPercentageValue
+ * include this Characteristic
+ * ---- Brightness
+ * ---- RelativeHumidityDehumidifierThreshold 
+ * ---- RelativeHumidityHumidifierThreshold 
+ * ---- RotationSpeed
+ * ---- Saturation TargetPosition TargetRelativeHumidity Volume  
+ * @param pervalue 
+ * @param callback 
+ */
+export function setPercentageValue(pervalue: Number, callback: () => void) {
   const { platform } = this;
   const { api } = platform;
   const jsonMessage = `${JSON.stringify({
     DeviceId: this.id,
     DeviceType: this.type,
-    MessageType: 'Request',
-    Operation: 'Set',
-    Property: 'Speed',
-    Value: speed
+    MessageType: "Request",
+    Operation: "Set",
+    Property: "PerValue",
+    Value: pervalue
   })}||`;
 
   this.platform.socket.write(jsonMessage);
-  api.emit(`Request-${this.type}-${this.id}-Set-Speed`);
+  api.emit(`Request-${this.type}-${this.id}-Set-PerValue`);
   platform.socket.pendingSetRequests.set(
-    `${this.type}-${this.id}-Speed`,
+    `${this.type}-${this.id}-PerValue`,
     jsonMessage
   );
 
-  api.once(`Response-${this.type}-${this.id}-Set-Speed`, () => {
-    platform.socket.pendingSetRequests.delete(`${this.type}-${this.id}-Speed`);
+  api.once(`Response-${this.type}-${this.id}-Set-PerValue`, () => {
+    platform.socket.pendingSetRequests.delete(`${this.type}-${this.id}-PerValue`);
     callback();
+  });
+}
+
+
+/**
+ * DECREASING 0;
+ * INCREASING 1;
+ * STOPPED 2;
+ * @param callback 
+ */
+export function PositionState(callback: (arg0: any, arg1: Number) => void) {
+  const { platform } = this;
+  const { api } = platform;
+  const jsonMessage = `${JSON.stringify({
+    DeviceId: this.id,
+    DeviceType: this.type,
+    MessageType: "Request",
+    Operation: "Get",
+    Property: "PostionState"
+  })}||`;
+  platform.socket.write(jsonMessage);
+  platform.socket.pendingGetRequests.set(
+    `${this.type}-${this.id}-PostionState`,
+    jsonMessage
+  );
+
+  api.once(`Response-${this.type}-${this.id}-Get-PostionState`, (value: Number) => {
+    platform.socket.pendingGetRequests.delete(`${this.type}-${this.id}-PostionState`);
+    const postion = value;
+    callback(null, postion);
+  });
+}
+
+export function getSensorState(callback: (arg0: any, arg1: Boolean) => void) {
+  const { platform } = this;
+  const { api } = platform;
+  const jsonMessage = `${JSON.stringify({
+    DeviceId: this.id,
+    DeviceType: this.type,
+    MessageType: "Request",
+    Operation: "Get",
+    Property: "SensorState"
+  })}||`;
+  platform.socket.write(jsonMessage);
+  platform.socket.pendingGetRequests.set(
+    `${this.type}-${this.id}-SensorState`,
+    jsonMessage
+  );
+
+  api.once(`Response-${this.type}-${this.id}-Get-SensorState`, (value: Boolean) => {
+    platform.socket.pendingGetRequests.delete(`${this.type}-${this.id}-SensorState`);
+    const state = value;
+    callback(null, state);
   });
 }
