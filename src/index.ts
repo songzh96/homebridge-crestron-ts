@@ -1,11 +1,21 @@
-import * as _ from 'lodash';
+var groupBy = require('lodash.groupBy');
+var each = require('lodash.each');
 import net from 'net';
 import { Fan } from './accessories/Fan';
 import { Switch } from './accessories/Switch';
 import { LightDimmer } from './accessories/LightDimmer';
 import { LightSwitch } from './accessories/LightSwitch';
+import { WindowCovering } from './accessories/WindowCovering';
+import { HeaterCooler } from './accessories/HeaterCooler';
+import { OccupancySensor } from './accessories/sensors/OccupancySensor';
+import { MotionSensor } from './accessories/sensors/MotionSensor';
+import { LeakSensor } from './accessories/sensors/LeakSensor';
+import { ContactSensor } from './accessories/sensors/ContactSensor';
+import { CarbonMonoxideSensor } from './accessories/sensors/CarbonMonoxideSensor';
+import { CarbonDioxideSensor } from './accessories/sensors/CarbonDioxideSensor';
+import { SmokeSensor } from './accessories/sensors/SmokeSensor';
 
-export default function(homebridge: { registerPlatform: (arg0: string, arg1: string, arg2: typeof Platform) => void; }) {
+export default function (homebridge: { registerPlatform: (arg0: string, arg1: string, arg2: typeof Platform) => void; }) {
   homebridge.registerPlatform('homebridge-crestron', 'Crestron', Platform);
 }
 
@@ -135,7 +145,7 @@ class Platform {
     // handle Homebridge launch
     this.api.on(
       'didFinishLaunching',
-      function() {
+      function () {
         this.log('DidFinishLaunching');
       }.bind(this)
     );
@@ -144,29 +154,65 @@ class Platform {
   accessories(callback: (arg0: any[]) => void) {
     const accessories = [];
     const { devices } = this.config;
-    const devicesByType = _.groupBy(devices, 'type');
+    const devicesByType = groupBy(devices, 'type');
 
     /*
       Here we register the devices with Homebridge. We group the devices listed
       in the config file by type and we call the appropriate accessory constructor.
      */
-    _.each(devicesByType, (devices: { forEach: (arg0: (device: any) => void) => void; }, type: any) => {
+    each(devicesByType, (devices: { forEach: (arg0: (device: any) => void) => void; }, type: any) => {
       devices.forEach(device => {
         switch (type) {
           case 'LightSwitch':
-            accessories.push(new LightSwitch(this.log, device, this));
+            accessories.push(new LightSwitch(device));
             return;
 
           case 'LightDimmer':
-            accessories.push(new LightDimmer(this.log, device, this));
+            accessories.push(new LightDimmer(device));
             return;
 
           case 'Switch':
-            accessories.push(new Switch(this.log, device, this));
+            accessories.push(new Switch(device));
             return;
 
           case 'Fan':
-            accessories.push(new Fan(this.log, device, this));
+            accessories.push(new Fan(device));
+            return;
+
+          case 'WindowCovering':
+            accessories.push(new WindowCovering(device));
+            return;
+
+          case 'HeaterCooler':
+            accessories.push(new HeaterCooler(device));
+            return;
+
+          case 'OccupancySensor':
+            accessories.push(new OccupancySensor(device));
+            return;
+
+          case 'SmokeSensor':
+            accessories.push(new SmokeSensor(device));
+            return;
+
+          case 'LeakSensor':
+            accessories.push(new LeakSensor(device));
+            return;
+
+          case 'MotionSensor':
+            accessories.push(new MotionSensor(device));
+            return;
+
+          case 'ContactSensor':
+            accessories.push(new ContactSensor(device));
+            return;
+
+          case 'CarbonMonoxideSensor':
+            accessories.push(new CarbonMonoxideSensor(device));
+            return;
+
+          case 'CarbonDioxideSensor':
+            accessories.push(new CarbonDioxideSensor(device));
             return;
         }
       });

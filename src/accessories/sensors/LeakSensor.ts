@@ -10,7 +10,7 @@ export class LeakSensor extends BaseAccessory {
   }: {
     log: Function;
     accessoryConfig: {
-      id: Number;
+      id: number;
       type: string;
       name: string;
       manufacturer: string;

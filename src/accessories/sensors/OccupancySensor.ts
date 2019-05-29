@@ -10,7 +10,7 @@ export class OccupancySensor extends BaseAccessory {
   }: {
     log: Function;
     accessoryConfig: {
-      id: Number;
+      id: number;
       type: string;
       name: string;
       manufacturer: string;

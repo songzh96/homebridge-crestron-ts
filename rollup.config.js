@@ -9,6 +9,7 @@ export default {
     file: "dist/index.js",
     format: "cjs",
   },
+  external: [ 'net' ],
   plugins: [
     resolve({
       jsnext: true,

@@ -1,7 +1,7 @@
 import { BaseAccessory } from '../BaseAccessory';
 import { getSensorState } from '../Callbacks';
 
-export class SmokeSensor extends BaseAccessory {
+export class MotionSensor extends BaseAccessory {
   motionSensor: any;
   constructor({
     log,
@@ -10,7 +10,7 @@ export class SmokeSensor extends BaseAccessory {
   }: {
     log: Function;
     accessoryConfig: {
-      id: Number;
+      id: number;
       type: string;
       name: string;
       manufacturer: string;

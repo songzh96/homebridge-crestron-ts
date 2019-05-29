@@ -162,7 +162,8 @@ export function setLightLevel(percentLevel: number, callback: () => void) {
 }
 
 /**
- * getPercentageValue
+ * getPercentageValue  
+ * PercentageValue:0-100
  * include this Characteristic
  * ---- BatteryLevel,Brightness,CarbonMonoxideLevel,CarbonMonoxidePeakLevel
  * ---- CurrentPosition,CurrentRelativeHumidity ,CurrentTemperature,FilterLifeLevel
@@ -197,6 +198,7 @@ export function getPercentageValue(callback: (arg0: any, arg1: Number) => void) 
 
 /**
  * setPercentageValue
+ * PercentageValue:0-100
  * include this Characteristic
  * ---- Brightness
  * ---- RelativeHumidityDehumidifierThreshold 
@@ -261,6 +263,12 @@ export function PositionState(callback: (arg0: any, arg1: Number) => void) {
   });
 }
 
+/**
+ * getSensorState
+ * DETECTED 1
+ * NOT_DETECTED 0 
+ * @param callback 
+ */
 export function getSensorState(callback: (arg0: any, arg1: Boolean) => void) {
   const { platform } = this;
   const { api } = platform;
@@ -281,5 +289,63 @@ export function getSensorState(callback: (arg0: any, arg1: Boolean) => void) {
     platform.socket.pendingGetRequests.delete(`${this.type}-${this.id}-SensorState`);
     const state = value;
     callback(null, state);
+  });
+}
+
+/**
+ * Because the type and id,the function directly to avoid code redundancy.
+ * This function contains a lot of HAP Characteristic, you can refer to this document(https://github.com/KhaosT/HAP-NodeJS/blob/master/lib/gen/HomeKitTypes.js#L1580)
+ * @param callback 
+ */
+export function getValue(callback: (arg0: any, arg1: Number) => void) {
+  const { platform } = this;
+  const { api } = platform;
+  const jsonMessage = `${JSON.stringify({
+    DeviceId: this.id,
+    DeviceType: this.type,
+    MessageType: "Request",
+    Operation: "Get",
+    Property: "Value"
+  })}||`;
+  platform.socket.write(jsonMessage);
+  platform.socket.pendingGetRequests.set(
+    `${this.type}-${this.id}-Value`,
+    jsonMessage
+  );
+
+  api.once(`Response-${this.type}-${this.id}-Get-Value`, (value: Number) => {
+    platform.socket.pendingGetRequests.delete(`${this.type}-${this.id}-Value`);
+    const r_value = value;
+    callback(null, r_value);
+  });
+}
+
+/**
+ * 
+ * @param value 
+ * @param callback 
+ */
+export function setValue(value: Number, callback: () => void) {
+  const { platform } = this;
+  const { api } = platform;
+  const jsonMessage = `${JSON.stringify({
+    DeviceId: this.id,
+    DeviceType: this.type,
+    MessageType: "Request",
+    Operation: "Set",
+    Property: "Value",
+    Value: value
+  })}||`;
+
+  this.platform.socket.write(jsonMessage);
+  api.emit(`Request-${this.type}-${this.id}-Set-Value`);
+  platform.socket.pendingSetRequests.set(
+    `${this.type}-${this.id}-Value`,
+    jsonMessage
+  );
+
+  api.once(`Response-${this.type}-${this.id}-Set-Value`, () => {
+    platform.socket.pendingSetRequests.delete(`${this.type}-${this.id}-Value`);
+    callback();
   });
 }

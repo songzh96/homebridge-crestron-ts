@@ -1,8 +1,8 @@
 import { BaseAccessory } from './BaseAccessory';
 import {
-  getFanSpeed,
+  getPercentageValue,
   getPowerState,
-  setFanSpeed,
+  setPercentageValue,
   setPowerState
 } from './Callbacks';
 
@@ -15,7 +15,7 @@ export class Fan extends BaseAccessory {
   }: {
     log: Function;
     accessoryConfig: {
-      id: Number;
+      id: number;
       type: string;
       name: string;
       manufacturer: string;
@@ -43,8 +43,8 @@ export class Fan extends BaseAccessory {
 
     const fanSpeed = fanService
       .getCharacteristic(Characteristic.RotationSpeed)
-      .on('get', getFanSpeed.bind(this))
-      .on('set', setFanSpeed.bind(this));
+      .on('get', getPercentageValue.bind(this))
+      .on('set', setPercentageValue.bind(this));
 
     this.fanService = fanService;
 

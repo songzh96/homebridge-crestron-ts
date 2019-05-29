@@ -3,7 +3,7 @@ import {
   getPercentageValue,setPercentageValue,PositionState
 } from "./Callbacks";
 
-export class LightDimmer extends BaseAccessory {
+export class WindowCovering extends BaseAccessory {
   windowCoveringService: any;
   constructor({
     log,
@@ -12,7 +12,7 @@ export class LightDimmer extends BaseAccessory {
   }: {
     log: Function;
     accessoryConfig: {
-      id: Number;
+      id: number;
       type: string;
       name: string;
       manufacturer: string;

@@ -12,7 +12,7 @@ export class BaseAccessory {
   constructor(
     log: Function,
     accessoryConfig: {
-      id: Number;
+      id: number;
       type: string;
       name: string;
       manufacturer: string;
