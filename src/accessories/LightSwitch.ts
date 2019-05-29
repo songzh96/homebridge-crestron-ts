@@ -3,23 +3,7 @@ import { getPowerState, setPowerState } from './Callbacks';
 
 export class LightSwitch extends BaseAccessory {
   lightBulbService: any;
-  constructor({
-    log,
-    accessoryConfig,
-    platform
-  }: {
-    log: Function;
-    accessoryConfig: {
-      id: number;
-      type: string;
-      name: string;
-      manufacturer: string;
-      model: string;
-      serialnumber: string;
-      frmwarerevision: string;
-    };
-    platform: any;
-  }) {
+  constructor(log: Function, accessoryConfig: { id: number; type: string; name: string; manufacturer: string; model: string; serialnumber: string; frmwarerevision: string; }, platform: any) {
     super(log, accessoryConfig, platform);
   }
 

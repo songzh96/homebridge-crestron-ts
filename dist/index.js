@@ -420,11 +420,7 @@ function setValue(value, callback) {
 }
 
 class Fan extends BaseAccessory {
-  constructor({
-    log,
-    accessoryConfig,
-    platform
-  }) {
+  constructor(log, accessoryConfig, platform) {
     super(log, accessoryConfig, platform);
 
     _defineProperty(this, "fanService", void 0);
@@ -459,11 +455,7 @@ class Fan extends BaseAccessory {
 }
 
 class Switch extends BaseAccessory {
-  constructor({
-    log,
-    accessoryConfig,
-    platform
-  }) {
+  constructor(log, accessoryConfig, platform) {
     super(log, accessoryConfig, platform);
 
     _defineProperty(this, "switchService", void 0);
@@ -494,11 +486,7 @@ class Switch extends BaseAccessory {
 }
 
 class LightDimmer extends BaseAccessory {
-  constructor({
-    log,
-    accessoryConfig,
-    platform
-  }) {
+  constructor(log, accessoryConfig, platform) {
     super(log, accessoryConfig, platform);
 
     _defineProperty(this, "lightBulbService", void 0);
@@ -533,11 +521,7 @@ class LightDimmer extends BaseAccessory {
 }
 
 class LightSwitch extends BaseAccessory {
-  constructor({
-    log,
-    accessoryConfig,
-    platform
-  }) {
+  constructor(log, accessoryConfig, platform) {
     super(log, accessoryConfig, platform);
 
     _defineProperty(this, "lightBulbService", void 0);
@@ -920,9 +904,10 @@ class SmokeSensor extends BaseAccessory {
 
 }
 
-var groupBy = require('lodash.groupBy');
+const groupBy = require('lodash');
 
-var each = require('lodash.each');
+const each = require('lodash');
+
 function index (homebridge) {
   homebridge.registerPlatform('homebridge-crestron', 'Crestron', Platform);
 }
@@ -1043,68 +1028,71 @@ class Platform {
       devices
     } = this.config;
     const devicesByType = groupBy(devices, 'type');
+    console.log(devicesByType.__wrapped__);
     /*
       Here we register the devices with Homebridge. We group the devices listed
       in the config file by type and we call the appropriate accessory constructor.
      */
 
-    each(devicesByType, (devices, type) => {
-      devices.forEach(device => {
-        switch (type) {
-          case 'LightSwitch':
-            accessories.push(new LightSwitch(device));
-            return;
+    devicesByType.__wrapped__.forEach(device => {
+      console.log(device);
 
-          case 'LightDimmer':
-            accessories.push(new LightDimmer(device));
-            return;
+      switch (device.type) {
+        case 'LightSwitch':
+          console.log(123);
+          accessories.push(new LightSwitch(this.log, device, this));
+          return;
 
-          case 'Switch':
-            accessories.push(new Switch(device));
-            return;
+        case 'LightDimmer':
+          accessories.push(new LightDimmer(this.log, device, this));
+          return;
 
-          case 'Fan':
-            accessories.push(new Fan(device));
-            return;
+        case 'Switch':
+          accessories.push(new Switch(this.log, device, this));
+          return;
 
-          case 'WindowCovering':
-            accessories.push(new WindowCovering(device));
-            return;
+        case 'Fan':
+          accessories.push(new Fan(this.log, device, this));
+          return;
 
-          case 'HeaterCooler':
-            accessories.push(new HeaterCooler(device));
-            return;
+        case 'WindowCovering':
+          accessories.push(new WindowCovering(device));
+          return;
 
-          case 'OccupancySensor':
-            accessories.push(new OccupancySensor(device));
-            return;
+        case 'HeaterCooler':
+          accessories.push(new HeaterCooler(device));
+          return;
 
-          case 'SmokeSensor':
-            accessories.push(new SmokeSensor(device));
-            return;
+        case 'OccupancySensor':
+          accessories.push(new OccupancySensor(device));
+          return;
 
-          case 'LeakSensor':
-            accessories.push(new LeakSensor(device));
-            return;
+        case 'SmokeSensor':
+          accessories.push(new SmokeSensor(device));
+          return;
 
-          case 'MotionSensor':
-            accessories.push(new MotionSensor(device));
-            return;
+        case 'LeakSensor':
+          accessories.push(new LeakSensor(device));
+          return;
 
-          case 'ContactSensor':
-            accessories.push(new ContactSensor(device));
-            return;
+        case 'MotionSensor':
+          accessories.push(new MotionSensor(device));
+          return;
 
-          case 'CarbonMonoxideSensor':
-            accessories.push(new CarbonMonoxideSensor(device));
-            return;
+        case 'ContactSensor':
+          accessories.push(new ContactSensor(device));
+          return;
 
-          case 'CarbonDioxideSensor':
-            accessories.push(new CarbonDioxideSensor(device));
-            return;
-        }
-      });
+        case 'CarbonMonoxideSensor':
+          accessories.push(new CarbonMonoxideSensor(device));
+          return;
+
+        case 'CarbonDioxideSensor':
+          accessories.push(new CarbonDioxideSensor(device));
+          return;
+      }
     });
+
     callback(accessories);
   }
 
