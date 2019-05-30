@@ -1,0 +1,617 @@
+/*******************************************************************************************
+  SIMPL+ Module Information
+  (Fill in comments below)
+*******************************************************************************************/
+/*
+Dealer Name:
+System Name:
+System Number:
+Programmer: Jonathan Avila
+Comments:
+*/
+
+/*******************************************************************************************
+  Compiler Directives
+  (Uncomment and declare compiler directives as needed)
+*******************************************************************************************/
+
+#SYMBOL_NAME "Homebridge"
+#HINT "This program communicates with a homebridge server to enable Crestron compatibility with Apple HomeKit."
+#PRINT_TO_TRACE
+#DEFAULT_VOLATILE
+#ENABLE_STACK_CHECKING
+#ENABLE_TRACE
+
+/*******************************************************************************************
+  Include Libraries
+  (Uncomment and include additional libraries as needed)
+
+  Note:  Crestron does not recommend the use of the #INCLUDEPATH directive in SIMPL+ modules
+  that are to be used in Crestron Studio.
+*******************************************************************************************/
+
+#USER_SIMPLSHARP_LIBRARY "SSharpHomebridge"
+
+
+/*******************************************************************************************
+  DIGITAL, ANALOG and SERIAL INPUTS and OUTPUTS
+  (Uncomment and declare inputs and outputs as needed)
+*******************************************************************************************/
+DIGITAL_INPUT _SKIP_,_SKIP_;
+DIGITAL_INPUT Light_IsOn[10];
+DIGITAL_INPUT _SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_;
+DIGITAL_INPUT DimLight_IsOn[10];
+DIGITAL_INPUT _SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_;
+DIGITAL_INPUT Switch_IsOn[10];
+DIGITAL_INPUT _SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_;
+DIGITAL_INPUT Fan_IsHigh[5];
+DIGITAL_INPUT Fan_IsMed[5];
+DIGITAL_INPUT Fan_IsLow[5];
+DIGITAL_INPUT Fan_IsOff[5];
+DIGITAL_INPUT _SKIP_;
+
+ANALOG_INPUT DimLight_Level[10];
+ANALOG_INPUT _SKIP_;
+
+DIGITAL_OUTPUT _SKIP_,_SKIP_;
+DIGITAL_OUTPUT Light_On[10];
+DIGITAL_OUTPUT Light_Off[10];
+DIGITAL_OUTPUT DimLight_On[10];
+DIGITAL_OUTPUT DimLight_Off[10];
+DIGITAL_OUTPUT Switch_On[10];
+DIGITAL_OUTPUT Switch_Off[10];
+DIGITAL_OUTPUT Fan_High[5];
+DIGITAL_OUTPUT Fan_Med[5];
+DIGITAL_OUTPUT Fan_Low[5];
+DIGITAL_OUTPUT Fan_Off[5];
+DIGITAL_OUTPUT _SKIP_;
+
+ANALOG_OUTPUT DimLight_Set[10];
+ANALOG_OUTPUT _SKIP_;
+
+/*******************************************************************************************
+  SOCKETS
+  (Uncomment and define socket definitions as needed)
+*******************************************************************************************/
+
+TCP_SERVER TCPServer[65000];
+
+/*******************************************************************************************
+  Parameters
+  (Uncomment and declare parameters as needed)
+*******************************************************************************************/
+
+INTEGER_PARAMETER Port;
+// SIGNED_INTEGER_PARAMETER
+// LONG_INTEGER_PARAMETER
+// SIGNED_LONG_INTEGER_PARAMETER
+STRING_PARAMETER IPAddress[16];
+
+/*******************************************************************************************
+  Parameter Properties
+  (Uncomment and declare parameter properties as needed)
+*******************************************************************************************/
+
+#BEGIN_PARAMETER_PROPERTIES IPAddress
+	propValidUnits = unitString;
+	propDefaultValue = "0.0.0.0";
+	propShortDescription = "IP Address";
+	#BEGIN_PROP_FULL_DESCRIPTION "TCP server's IP Address to allow connections from" #END_PROP_FULL_DESCRIPTION
+#END_PARAMETER_PROPERTIES
+
+#BEGIN_PARAMETER_PROPERTIES Port
+	propValidUnits = unitDecimal;
+	propDefaultValue = 9050d;
+	propShortDescription = "port";
+	#BEGIN_PROP_FULL_DESCRIPTION "TCP's server port to connect to" #END_PROP_FULL_DESCRIPTION
+#END_PARAMETER_PROPERTIES
+
+/*******************************************************************************************
+  Global Variables
+  (Uncomment and declare global variables as needed)
+  Note:  Be sure to initialize all declared STRING variables as needed
+         For example, in Function Main: myString = "";
+*******************************************************************************************/
+
+SIGNED_INTEGER doServerConnected;
+STRING InternalRxBuffer[65000];
+
+/*******************************************************************************************
+  Functions
+  (Add any additional functions here)
+  Note:  Functions must be physically placed before the location in
+         the code that calls them.
+*******************************************************************************************/
+
+Function StartServer()
+{
+  SIGNED_INTEGER Status;
+	RegisterEvent(MessageBroker, OnLightSwitchMessage, LightSwitchMessageHandler);
+	RegisterEvent(MessageBroker, OnLightDimmerMessage, LightDimmerMessageHandler);
+	RegisterEvent(MessageBroker, OnSwitchMessage, SwitchMessageHandler);
+	RegisterEvent(MessageBroker, OnFanMessage, FanMessageHandler);
+	Status = SocketServerStartListen(TCPServer, IPAddress, Port);
+
+	if (status < 0) {
+		Print("Error listening to %s on port %u (status: %d)\n", IPAddress, Port, Status);
+	} else {
+        Print("Server started to %s on port %u (status: %d)\n", IPAddress, Port, status);
+	}
+}
+
+Function SocketTx(STRING ServerTx)
+{
+	SIGNED_INTEGER Status;
+
+    Status = SocketSend(TCPServer, ServerTx);
+
+    if (Status < 0) {
+		Print("Error Sending to TCPServer: %d\n", Status);
+    } else {
+		// Print("Sent %s\n", ServerTx);
+	}
+}
+
+EventHandler LightSwitchMessageHandler(Message msg)
+{
+	INTEGER IsOn;
+	INTEGER Value;
+	STRING ServerTx[500];
+	IsOn = Light_IsOn[msg.DeviceId];
+
+	if (msg.MessageType = "Request" && msg.Operation = "Get" && msg.Property = "Power")
+	{
+		Value = IsOn;
+		msg.Value = Value;
+		msg.MessageType = "Response";
+		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
+		SocketTx(ServerTx);
+	}
+
+	if (msg.MessageType = "Request" && msg.Operation = "Set" && msg.Property = "Power")
+	{
+		Value = msg.Value;
+
+		if (Value = 1 && IsOn = 0)
+		{
+			PULSE(1, Light_On[msg.DeviceId]);
+		}
+		else if (Value = 0 && IsOn = 1)
+		{
+			PULSE(1, Light_Off[msg.DeviceId]);
+		}
+		else
+		{
+			msg.MessageType = "Response";
+			ServerTx = MessageBroker.SerializeMessage(msg) + "||";
+			SocketTx(ServerTx);
+		}
+	}
+
+	if (msg.MessageType = "Event" && msg.Operation = "Set" && msg.Property = "Power")
+	{
+		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
+		SocketTx(ServerTx);
+	}
+}
+
+EventHandler LightDimmerMessageHandler(Message msg)
+{
+	INTEGER IsOn;
+	INTEGER Level;
+	INTEGER Value;
+	STRING ServerTx[500];
+	IsOn = DimLight_IsOn[msg.DeviceId];
+	Level = DimLight_Level[msg.DeviceId];
+
+	if (msg.MessageType = "Request" && msg.Operation = "Get" && msg.Property = "Power")
+	{
+		Value = IsOn;
+		msg.Value = Value;
+		msg.MessageType = "Response";
+		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
+		SocketTx(ServerTx);
+	}
+
+	if (msg.MessageType = "Request" && msg.Operation = "Get" && msg.Property = "Level")
+	{
+		Value = Level;
+		msg.Value = Value;
+		msg.MessageType = "Response";
+		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
+		SocketTx(ServerTx);
+	}
+
+	if (msg.MessageType = "Request" && msg.Operation = "Set" && msg.Property = "Power")
+	{
+		Value = msg.Value;
+
+		if (Value = 1 && IsOn = 0)
+		{
+			PULSE(1, DimLight_On[msg.DeviceId]);
+		}
+		else if (Value = 0 && IsOn = 1)
+		{
+			PULSE(1, DimLight_Off[msg.DeviceId]);
+		}
+		else
+		{
+			msg.MessageType = "Response";
+			ServerTx = MessageBroker.SerializeMessage(msg) + "||";
+			SocketTx(ServerTx);
+		}
+	}
+
+	if (msg.MessageType = "Request" && msg.Operation = "Set" && msg.Property = "Level")
+	{
+		Value = msg.Value;
+
+		if (Value = 65535)
+		{
+			PULSE(1, DimLight_On[msg.DeviceId]);
+		}
+		else
+		{
+			DimLight_Set[msg.DeviceId] = Value;
+		}
+	}
+
+	if (msg.MessageType = "Event" && msg.Operation = "Set" && msg.Property = "Power")
+	{
+		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
+		SocketTx(ServerTx);
+	}
+
+	if (msg.MessageType = "Event" && msg.Operation = "Set" && msg.Property = "Level")
+	{
+		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
+		SocketTx(ServerTx);
+	}
+}
+
+EventHandler SwitchMessageHandler(Message msg)
+{
+	INTEGER IsOn;
+	INTEGER Value;
+	STRING ServerTx[500];
+	IsOn = Switch_IsOn[msg.DeviceId];
+
+	if (msg.MessageType = "Request" && msg.Operation = "Get" && msg.Property = "Power")
+	{
+		Value = IsOn;
+		msg.Value = Value;
+		msg.MessageType = "Response";
+		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
+		SocketTx(ServerTx);
+	}
+
+	if (msg.MessageType = "Request" && msg.Operation = "Set" && msg.Property = "Power")
+	{
+		Value = msg.Value;
+
+		if (Value = 1 && IsOn = 0)
+		{
+			PULSE(1, Switch_On[msg.DeviceId]);
+		}
+		else if (Value = 0 && IsOn = 1)
+		{
+			PULSE(1, Switch_Off[msg.DeviceId]);
+		}
+		else
+		{
+			msg.MessageType = "Response";
+			ServerTx = MessageBroker.SerializeMessage(msg) + "||";
+			SocketTx(ServerTx);
+		}
+	}
+
+	if (msg.MessageType = "Event" && msg.Operation = "Set" && msg.Property = "Power")
+	{
+		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
+		SocketTx(ServerTx);
+	}
+}
+
+EventHandler FanMessageHandler(Message msg)
+{
+	INTEGER IsOff;
+	INTEGER IsLow;
+	INTEGER IsMed;
+	INTEGER IsHigh;
+	INTEGER Value;
+	STRING ServerTx[500];
+	IsOff = Fan_IsOff[msg.DeviceId];
+	IsLow = Fan_IsLow[msg.DeviceId];
+	IsMed = Fan_IsMed[msg.DeviceId];
+	IsHigh = Fan_IsHigh[msg.DeviceId];
+
+	if (msg.MessageType = "Request" && msg.Operation = "Get" && msg.Property = "Power")
+	{
+		Value = IsOff;
+
+		if (Value = 1)
+		{
+			Value = 0;
+		}
+		else
+		{
+			Value = 1;
+		}
+		msg.Value = Value;
+		msg.MessageType = "Response";
+		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
+		SocketTx(ServerTx);
+	}
+
+	if (msg.MessageType = "Request" && msg.Operation = "Get" && msg.Property = "PerValue")
+	{
+		if (IsLow = 1)
+		{
+			Value = 33;
+		}
+		if (IsMed = 1)
+		{
+			Value = 66;
+		}
+		if (IsHigh = 1)
+		{
+			Value = 100;
+		}
+
+		msg.Value = Value;
+		msg.MessageType = "Response";
+		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
+		SocketTx(ServerTx);
+	}
+
+	if (msg.MessageType = "Request" && msg.Operation = "Set" && msg.Property = "Power")
+	{
+		Value = msg.Value;
+
+		if (Value = 1 && IsOff = 1)
+		{
+			PULSE(1, Fan_High[msg.DeviceId]);
+		}
+		else if (Value = 0 && IsOff = 0)
+		{
+			PULSE(1, Fan_Off[msg.DeviceId]);
+		}
+		else
+		{
+			msg.MessageType = "Response";
+			ServerTx = MessageBroker.SerializeMessage(msg) + "||";
+			SocketTx(ServerTx);
+		}
+	}
+
+	if (msg.MessageType = "Request" && msg.Operation = "Set" && msg.Property = "PerValue")
+	{
+		Value = msg.Value;
+
+		if (Value <= 33)
+		{
+			PULSE(1, Fan_Low[msg.DeviceId]);
+		}
+		else if (Value <= 66)
+		{
+			PULSE(1, Fan_Med[msg.DeviceId]);
+		}
+		else
+		{
+			PULSE(1, Fan_High[msg.DeviceId]);
+		}
+	}
+
+	if (msg.MessageType = "Event" && msg.Operation = "Set" && msg.Property = "Power")
+	{
+		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
+		SocketTx(ServerTx);
+	}
+
+	if (msg.MessageType = "Event" && msg.Operation = "Set" && msg.Property = "Speed")
+	{
+		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
+		SocketTx(ServerTx);
+	}
+}
+
+Function SocketRx()
+{
+	STRING Temp$[65000];
+	// Print("InternalRxBuffer: %s\n", InternalRxBuffer);
+    While (Len(InternalRxBuffer) > 1)
+	{
+		Temp$ = Remove("||",InternalRxBuffer);
+    	Temp$ = Left(Temp$, (Len(Temp$)-2));
+		MessageBroker.ParseMessage(Temp$);
+	}
+}
+
+/*******************************************************************************************
+  Event Handlers
+  (Uncomment and declare additional event handlers as needed)
+*******************************************************************************************/
+
+CHANGE Light_IsOn
+{
+	Message msg;
+	INTEGER Id;
+	Id = GetLastModifiedArrayIndex();
+	msg.MessageType = "Event";
+	msg.DeviceType = "LightSwitch";
+	msg.DeviceId = Id;
+	msg.Operation = "Set";
+	msg.Property = "Power";
+	msg.Value = Light_IsOn[Id];
+	MessageBroker.TriggerLightSwitchMessage(msg);
+}
+
+CHANGE DimLight_IsOn
+{
+	Message msg;
+	INTEGER Id;
+	Id = GetLastModifiedArrayIndex();
+	msg.MessageType = "Event";
+	msg.DeviceType = "LightDimmer";
+	msg.DeviceId = Id;
+	msg.Operation = "Set";
+	msg.Property = "Power";
+	msg.Value = DimLight_IsOn[Id];
+	MessageBroker.TriggerLightDimmerMessage(msg);
+}
+
+CHANGE DimLight_Level
+{
+	Message msg;
+	INTEGER Id;
+	Id = GetLastModifiedArrayIndex();
+	msg.MessageType = "Event";
+	msg.DeviceType = "LightDimmer";
+	msg.DeviceId = Id;
+	msg.Operation = "Set";
+	msg.Property = "Level";
+	msg.Value = DimLight_Level[Id];
+	MessageBroker.TriggerLightDimmerMessage(msg);
+}
+
+CHANGE Switch_IsOn
+{
+	Message msg;
+	INTEGER Id;
+	Id = GetLastModifiedArrayIndex();
+	msg.MessageType = "Event";
+	msg.DeviceType = "Switch";
+	msg.DeviceId = Id;
+	msg.Operation = "Set";
+	msg.Property = "Power";
+	msg.Value = Switch_IsOn[Id];
+	MessageBroker.TriggerSwitchMessage(msg);
+}
+
+CHANGE Fan_IsOff
+{
+	Message msg;
+	INTEGER Id;
+	Id = GetLastModifiedArrayIndex();
+	msg.MessageType = "Event";
+	msg.DeviceType = "Fan";
+	msg.DeviceId = Id;
+	msg.Operation = "Set";
+	msg.Property = "Power";
+	msg.Value = Fan_IsOff[Id];
+
+	if (msg.Value = 1)
+	{
+		msg.Value = 0;
+	}
+	else
+	{
+		msg.Value = 1;
+	}
+
+	MessageBroker.TriggerFanMessage(msg);
+}
+
+CHANGE Fan_IsLow
+{
+	Message msg;
+	INTEGER Id;
+	Id = GetLastModifiedArrayIndex();
+	if (Fan_IsLow[Id] = 1)
+	{
+		msg.MessageType = "Event";
+		msg.DeviceType = "Fan";
+		msg.DeviceId = Id;
+		msg.Operation = "Set";
+		msg.Property = "PerValue";
+		msg.Value = 33;
+		MessageBroker.TriggerFanMessage(msg);
+	}
+}
+
+CHANGE Fan_IsMed
+{
+	Message msg;
+	INTEGER Id;
+	Id = GetLastModifiedArrayIndex();
+	if (Fan_IsMed[Id] = 1)
+	{
+		msg.MessageType = "Event";
+		msg.DeviceType = "Fan";
+		msg.DeviceId = Id;
+		msg.Operation = "Set";
+		msg.Property = "PerValue";
+		msg.Value = 66;
+		MessageBroker.TriggerFanMessage(msg);
+	}
+}
+
+CHANGE Fan_IsHigh
+{
+	Message msg;
+	INTEGER Id;
+	Id = GetLastModifiedArrayIndex();
+	if (Fan_IsHigh[Id] = 1)
+	{
+		msg.MessageType = "Event";
+		msg.DeviceType = "Fan";
+		msg.DeviceId = Id;
+		msg.Operation = "Set";
+		msg.Property = "PerValue";
+		msg.Value = 100;
+		MessageBroker.TriggerFanMessage(msg);
+	}
+}
+
+SOCKETCONNECT TCPServer
+{
+    doServerConnected = 1;
+    Print("OnConnect: input buffer size is: %d\n", Len(TCPServer.SocketRxBuf));
+}
+
+
+
+SOCKETDISCONNECT TCPServer
+{
+    doServerConnected = 0;
+}
+
+
+
+SOCKETRECEIVE TCPServer
+{
+    InternalRxBuffer = InternalRxBuffer + TCPServer.SocketRxBuf;
+	ClearBuffer(TCPServer.SocketRxBuf);
+	SocketRx();
+}
+
+
+
+SOCKETSTATUS TCPServer
+{
+    SIGNED_INTEGER Status;
+    Status = SocketGetStatus();
+    Print("The SocketGetStatus returns:       %d\n", Status);
+    Print("The TCPServer.SocketStatus returns: %d\n", TCPServer.SocketStatus);
+}
+
+
+/*******************************************************************************************
+  Main()
+  Uncomment and place one-time startup code here
+  (This code will get called when the system starts up)
+*******************************************************************************************/
+
+Function Main()
+{
+    WaitForInitializationComplete();
+    // If you are reading any Input or Output variables, uncomment
+    //   the WaitForInitializationComplete statement above and read
+    //   them afterwards.  Input/Output variables will not have
+    //   their correct values set until after the logic processor
+    //   runs and propagates the values to them.
+
+	//Initialize the TCP server
+	StartServer();
+    Print("Program started!!!.\n");
+}
