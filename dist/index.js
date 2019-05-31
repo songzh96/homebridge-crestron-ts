@@ -2292,9 +2292,9 @@ var DataView = _getNative(_root, 'DataView');
 var _DataView = DataView;
 
 /* Built-in method references that are verified to be native. */
-var Promise = _getNative(_root, 'Promise');
+var Promise$1 = _getNative(_root, 'Promise');
 
-var _Promise = Promise;
+var _Promise = Promise$1;
 
 /* Built-in method references that are verified to be native. */
 var Set = _getNative(_root, 'Set');
@@ -3218,6 +3218,11 @@ function uuid(len, radix) {
 
   return uuid.join("");
 }
+function timeout(ms) {
+  return new Promise(resolve => {
+    setTimeout(resolve, ms);
+  });
+}
 
 class BaseAccessory {
   constructor(log, accessoryConfig, platform) {
@@ -3248,7 +3253,7 @@ class BaseAccessory {
     this.manufacturer = "crestron";
     this.model = accessoryConfig.type + "ID " + accessoryConfig.id;
     this.serialnumber = uuid(8, 16);
-    this.frmwarerevision = "2.0.0";
+    this.frmwarerevision = "2.0";
     this.platform = platform;
     const {
       hap: {
@@ -3476,13 +3481,35 @@ function setPercentageValue(pervalue, callback) {
   });
 }
 /**
- * DECREASING 0;
- * INCREASING 1;
- * STOPPED 2;
+ * WindowCovering,Window,Door
+ * @param position 
  * @param callback 
  */
 
-function PositionState(callback) {
+function setTargetPosition(position, callback) {
+  const {
+    platform
+  } = this;
+  const {
+    api
+  } = platform;
+  const jsonMessage = `${JSON.stringify({
+    DeviceId: this.id,
+    DeviceType: this.type,
+    MessageType: "Request",
+    Operation: "Set",
+    Property: "TargetPosition",
+    Value: position
+  })}||`;
+  this.platform.socket.write(jsonMessage);
+  api.emit(`Request-${this.type}-${this.id}-Set-TargetPosition`);
+  platform.socket.pendingSetRequests.set(`${this.type}-${this.id}-TargetPosition`, jsonMessage);
+  api.once(`Response-${this.type}-${this.id}-Set-TargetPosition`, () => {
+    platform.socket.pendingSetRequests.delete(`${this.type}-${this.id}-TargetPosition`);
+    callback();
+  });
+}
+function getPosition(property, callback) {
   const {
     platform
   } = this;
@@ -3494,14 +3521,14 @@ function PositionState(callback) {
     DeviceType: this.type,
     MessageType: "Request",
     Operation: "Get",
-    Property: "PostionState"
+    Property: property
   })}||`;
   platform.socket.write(jsonMessage);
-  platform.socket.pendingGetRequests.set(`${this.type}-${this.id}-PostionState`, jsonMessage);
-  api.once(`Response-${this.type}-${this.id}-Get-PostionState`, value => {
-    platform.socket.pendingGetRequests.delete(`${this.type}-${this.id}-PostionState`);
-    const postion = value;
-    callback(null, postion);
+  platform.socket.pendingGetRequests.set(`${this.type}-${this.id}-${property}`, jsonMessage);
+  api.once(`Response-${this.type}-${this.id}-Get-${property}`, value => {
+    platform.socket.pendingGetRequests.delete(`${this.type}-${this.id}-${property}`);
+    const pervalue = value;
+    callback(null, pervalue);
   });
 }
 /**
@@ -3523,12 +3550,12 @@ function getSensorState(callback) {
     DeviceType: this.type,
     MessageType: "Request",
     Operation: "Get",
-    Property: "SensorState"
+    Property: "State"
   })}||`;
   platform.socket.write(jsonMessage);
-  platform.socket.pendingGetRequests.set(`${this.type}-${this.id}-SensorState`, jsonMessage);
-  api.once(`Response-${this.type}-${this.id}-Get-SensorState`, value => {
-    platform.socket.pendingGetRequests.delete(`${this.type}-${this.id}-SensorState`);
+  platform.socket.pendingGetRequests.set(`${this.type}-${this.id}-State`, jsonMessage);
+  api.once(`Response-${this.type}-${this.id}-Get-State`, value => {
+    platform.socket.pendingGetRequests.delete(`${this.type}-${this.id}-State`);
     const state = value;
     callback(null, state);
   });
@@ -3744,16 +3771,19 @@ class WindowCovering extends BaseAccessory {
       }
     } = api;
     const WindowCoveringService = new Service.WindowCovering();
-    const currPosition = WindowCoveringService.getCharacteristic(Characteristic.CurrentPosition).on("get", getPercentageValue.bind(this));
-    const targetPosition = WindowCoveringService.getCharacteristic(Characteristic.TargetPosition).on("get", getPercentageValue.bind(this)).on("set", setPercentageValue.bind(this));
-    const positionState = WindowCoveringService.getCharacteristic(Characteristic.PositionState).on("get", PositionState.bind(this));
+    const currPosition = WindowCoveringService.getCharacteristic(Characteristic.CurrentPosition).on("get", getPosition.bind(this, "CurrentPosition"));
+    const targetPosition = WindowCoveringService.getCharacteristic(Characteristic.TargetPosition).on("get", getPosition.bind(this, "TargetPosition")).on("set", setTargetPosition.bind(this));
+    const positionState = WindowCoveringService.getCharacteristic(Characteristic.PositionState);
     this.windowCoveringService = WindowCoveringService;
-    api.on(`Event-${this.type}-${this.id}-Set-PerValue`, value => {
+    api.on(`Event-${this.type}-${this.id}-Set-CurrentPosition`, async value => {
       targetPosition.updateValue(value);
+      await timeout(3000);
+      positionState.updateValue(2);
+      await timeout(2000);
       currPosition.updateValue(value);
     });
-    api.on(`Event-${this.type}-${this.id}-Set-PositionState`, value => {
-      positionState.updateValue(value);
+    api.on(`Event-${this.type}-${this.id}-Set-TargetPosition`, value => {
+      targetPosition.updateValue(value);
     });
     return [this.infoService, WindowCoveringService];
   }
@@ -3840,7 +3870,7 @@ class OccupancySensor extends BaseAccessory {
 
     const sensorState = OccupancySensorService.getCharacteristic(Characteristic.OccupancyDetected).on("get", getSensorState.bind(this));
     this.occupancySensor = OccupancySensorService;
-    api.on(`Event-${this.type}-${this.id}-Get-sensorState`, value => {
+    api.on(`Event-${this.type}-${this.id}-Set-State`, value => {
       sensorState.updateValue(Boolean(value));
     });
     return [this.infoService, OccupancySensorService];
@@ -3872,7 +3902,7 @@ class MotionSensor extends BaseAccessory {
 
     const sensorState = motionSensorService.getCharacteristic(Characteristic.MotionDetected).on('get', getSensorState.bind(this));
     this.motionSensor = motionSensorService;
-    api.on(`Event-${this.type}-${this.id}-Get-sensorState`, value => {
+    api.on(`Event-${this.type}-${this.id}-Set-State`, value => {
       sensorState.updateValue(Boolean(value));
     });
     return [this.infoService, motionSensorService];
@@ -3936,7 +3966,7 @@ class ContactSensor extends BaseAccessory {
 
     const sensorState = contactService.getCharacteristic(Characteristic.ContactSensorState).on('get', getSensorState.bind(this));
     this.contactSensor = contactService;
-    api.on(`Event-${this.type}-${this.id}-Get-sensorState`, value => {
+    api.on(`Event-${this.type}-${this.id}-Set-State`, value => {
       sensorState.updateValue(Boolean(value));
     });
     return [this.infoService, contactService];

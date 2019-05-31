@@ -233,14 +233,37 @@ export function setPercentageValue(pervalue: Number, callback: () => void) {
   });
 }
 
-
 /**
- * DECREASING 0;
- * INCREASING 1;
- * STOPPED 2;
+ * WindowCovering,Window,Door
+ * @param position 
  * @param callback 
  */
-export function PositionState(callback: (arg0: any, arg1: Number) => void) {
+export function setTargetPosition(position: Number, callback: () => void) {
+  const { platform } = this;
+  const { api } = platform;
+  const jsonMessage = `${JSON.stringify({
+    DeviceId: this.id,
+    DeviceType: this.type,
+    MessageType: "Request",
+    Operation: "Set",
+    Property: "TargetPosition",
+    Value: position
+  })}||`;
+
+  this.platform.socket.write(jsonMessage);
+  api.emit(`Request-${this.type}-${this.id}-Set-TargetPosition`);
+  platform.socket.pendingSetRequests.set(
+    `${this.type}-${this.id}-TargetPosition`,
+    jsonMessage
+  );
+
+  api.once(`Response-${this.type}-${this.id}-Set-TargetPosition`, () => {
+    platform.socket.pendingSetRequests.delete(`${this.type}-${this.id}-TargetPosition`);
+    callback();
+  });
+}
+
+export function getPosition(property: string, callback: (arg0: any, arg1: Number) => void) {
   const { platform } = this;
   const { api } = platform;
   const jsonMessage = `${JSON.stringify({
@@ -248,18 +271,18 @@ export function PositionState(callback: (arg0: any, arg1: Number) => void) {
     DeviceType: this.type,
     MessageType: "Request",
     Operation: "Get",
-    Property: "PostionState"
+    Property: property
   })}||`;
   platform.socket.write(jsonMessage);
   platform.socket.pendingGetRequests.set(
-    `${this.type}-${this.id}-PostionState`,
+    `${this.type}-${this.id}-${property}`,
     jsonMessage
   );
 
-  api.once(`Response-${this.type}-${this.id}-Get-PostionState`, (value: Number) => {
-    platform.socket.pendingGetRequests.delete(`${this.type}-${this.id}-PostionState`);
-    const postion = value;
-    callback(null, postion);
+  api.once(`Response-${this.type}-${this.id}-Get-${property}`, (value: Number) => {
+    platform.socket.pendingGetRequests.delete(`${this.type}-${this.id}-${property}`);
+    const pervalue = value;
+    callback(null, pervalue);
   });
 }
 
@@ -277,16 +300,16 @@ export function getSensorState(callback: (arg0: any, arg1: Boolean) => void) {
     DeviceType: this.type,
     MessageType: "Request",
     Operation: "Get",
-    Property: "SensorState"
+    Property: "State"
   })}||`;
   platform.socket.write(jsonMessage);
   platform.socket.pendingGetRequests.set(
-    `${this.type}-${this.id}-SensorState`,
+    `${this.type}-${this.id}-State`,
     jsonMessage
   );
 
-  api.once(`Response-${this.type}-${this.id}-Get-SensorState`, (value: Boolean) => {
-    platform.socket.pendingGetRequests.delete(`${this.type}-${this.id}-SensorState`);
+  api.once(`Response-${this.type}-${this.id}-Get-State`, (value: Boolean) => {
+    platform.socket.pendingGetRequests.delete(`${this.type}-${this.id}-State`);
     const state = value;
     callback(null, state);
   });

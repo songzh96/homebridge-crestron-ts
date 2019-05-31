@@ -1,7 +1,9 @@
 import { BaseAccessory } from "./BaseAccessory";
 import {
-  getPercentageValue,setPercentageValue,PositionState
+  getPosition, setTargetPosition
 } from "./Callbacks";
+import { watchFile } from "fs";
+import { timeout } from "homebridge-crestron-ts/src/unit/unit";
 
 export class WindowCovering extends BaseAccessory {
   windowCoveringService: any;
@@ -19,24 +21,23 @@ export class WindowCovering extends BaseAccessory {
     const WindowCoveringService = new Service.WindowCovering();
     const currPosition = WindowCoveringService
       .getCharacteristic(Characteristic.CurrentPosition)
-      .on("get", getPercentageValue.bind(this));
+      .on("get", getPosition.bind(this, "CurrentPosition"));
     const targetPosition = WindowCoveringService
       .getCharacteristic(Characteristic.TargetPosition)
-      .on("get", getPercentageValue.bind(this))
-      .on("set", setPercentageValue.bind(this));
+      .on("get", getPosition.bind(this, "TargetPosition"))
+      .on("set", setTargetPosition.bind(this));
     const positionState = WindowCoveringService
       .getCharacteristic(Characteristic.PositionState)
-      .on("get", PositionState.bind(this));
 
     this.windowCoveringService = WindowCoveringService;
 
-    api.on(`Event-${this.type}-${this.id}-Set-PerValue`, (value: any) => {
+    api.on(`Event-${this.type}-${this.id}-Set-CurrentPosition`, async (value: any) => {
       targetPosition.updateValue(value);
-      currPosition.updateValue(value);
-    });
+          
+      await timeout(5000);
 
-    api.on(`Event-${this.type}-${this.id}-Set-PositionState`, (value: number) => {
-      positionState.updateValue(value);
+      positionState.updateValue(Characteristic.PositionState.STOPPED);
+      currPosition.updateValue(value);
     });
 
     return [this.infoService, WindowCoveringService];

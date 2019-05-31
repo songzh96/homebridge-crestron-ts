@@ -6,7 +6,7 @@
 Dealer Name:
 System Name:
 System Number:
-Programmer: Jonathan Avila
+Programmer: songzh
 Comments:
 */
 
@@ -29,8 +29,8 @@ Comments:
   Note:  Crestron does not recommend the use of the #INCLUDEPATH directive in SIMPL+ modules
   that are to be used in Crestron Studio.
 *******************************************************************************************/
-
-#USER_SIMPLSHARP_LIBRARY "SSharpHomebridge"
+#INCLUDEPATH "C:\Program Files (x86)\Crestron\Simpl\Usrsplus"
+#USER_SIMPLSHARP_LIBRARY "SIMPLSharpLibrary1"
 
 
 /*******************************************************************************************
@@ -40,8 +40,6 @@ Comments:
 DIGITAL_INPUT _SKIP_,_SKIP_;
 DIGITAL_INPUT Light_IsOn[10];
 DIGITAL_INPUT _SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_;
-DIGITAL_INPUT DimLight_IsOn[10];
-DIGITAL_INPUT _SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_;
 DIGITAL_INPUT Switch_IsOn[10];
 DIGITAL_INPUT _SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_;
 DIGITAL_INPUT Fan_IsHigh[5];
@@ -49,15 +47,20 @@ DIGITAL_INPUT Fan_IsMed[5];
 DIGITAL_INPUT Fan_IsLow[5];
 DIGITAL_INPUT Fan_IsOff[5];
 DIGITAL_INPUT _SKIP_;
+DIGITAL_INPUT MotionSensor_State[5];
+DIGITAL_INPUT _SKIP_;
+DIGITAL_INPUT OccupancySensor_State[5];
+DIGITAL_INPUT _SKIP_;
 
 ANALOG_INPUT DimLight_Level[10];
 ANALOG_INPUT _SKIP_;
+ANALOG_INPUT Get_CurrentPosition[2];
+ANALOG_INPUT _SKIP_;
+
 
 DIGITAL_OUTPUT _SKIP_,_SKIP_;
 DIGITAL_OUTPUT Light_On[10];
 DIGITAL_OUTPUT Light_Off[10];
-DIGITAL_OUTPUT DimLight_On[10];
-DIGITAL_OUTPUT DimLight_Off[10];
 DIGITAL_OUTPUT Switch_On[10];
 DIGITAL_OUTPUT Switch_Off[10];
 DIGITAL_OUTPUT Fan_High[5];
@@ -68,7 +71,8 @@ DIGITAL_OUTPUT _SKIP_;
 
 ANALOG_OUTPUT DimLight_Set[10];
 ANALOG_OUTPUT _SKIP_;
-
+ANALOG_OUTPUT Set_Position[2];
+ANALOG_INPUT _SKIP_;
 /*******************************************************************************************
   SOCKETS
   (Uncomment and define socket definitions as needed)
@@ -130,6 +134,9 @@ Function StartServer()
 	RegisterEvent(MessageBroker, OnLightDimmerMessage, LightDimmerMessageHandler);
 	RegisterEvent(MessageBroker, OnSwitchMessage, SwitchMessageHandler);
 	RegisterEvent(MessageBroker, OnFanMessage, FanMessageHandler);
+	RegisterEvent(MessageBroker, OnSensorStateMessage, SensorStateMessageHandler);
+	RegisterEvent(MessageBroker, OnWindowCoveringMessage, WindowCoveringHandler);
+
 	Status = SocketServerStartListen(TCPServer, IPAddress, Port);
 
 	if (status < 0) {
@@ -201,11 +208,17 @@ EventHandler LightDimmerMessageHandler(Message msg)
 	INTEGER Level;
 	INTEGER Value;
 	STRING ServerTx[500];
-	IsOn = DimLight_IsOn[msg.DeviceId];
 	Level = DimLight_Level[msg.DeviceId];
 
 	if (msg.MessageType = "Request" && msg.Operation = "Get" && msg.Property = "Power")
 	{
+		if (Level = 0)
+		{
+			IsOn = 0;				
+		} else 
+		{
+			IsOn = 1;
+		}
 		Value = IsOn;
 		msg.Value = Value;
 		msg.MessageType = "Response";
@@ -226,13 +239,13 @@ EventHandler LightDimmerMessageHandler(Message msg)
 	{
 		Value = msg.Value;
 
-		if (Value = 1 && IsOn = 0)
+		if (Value = 1 && Level = 0)
 		{
-			PULSE(1, DimLight_On[msg.DeviceId]);
+			DimLight_Set[msg.DeviceId] = 65535;
 		}
-		else if (Value = 0 && IsOn = 1)
+		else if (Value = 0 && Level > 0)
 		{
-			PULSE(1, DimLight_Off[msg.DeviceId]);
+			DimLight_Set[msg.DeviceId] = 0;
 		}
 		else
 		{
@@ -246,20 +259,7 @@ EventHandler LightDimmerMessageHandler(Message msg)
 	{
 		Value = msg.Value;
 
-		if (Value = 65535)
-		{
-			PULSE(1, DimLight_On[msg.DeviceId]);
-		}
-		else
-		{
-			DimLight_Set[msg.DeviceId] = Value;
-		}
-	}
-
-	if (msg.MessageType = "Event" && msg.Operation = "Set" && msg.Property = "Power")
-	{
-		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
-		SocketTx(ServerTx);
+		DimLight_Set[msg.DeviceId] = Value;
 	}
 
 	if (msg.MessageType = "Event" && msg.Operation = "Set" && msg.Property = "Level")
@@ -415,6 +415,74 @@ EventHandler FanMessageHandler(Message msg)
 	}
 }
 
+EventHandler SensorStateMessageHandler(Message msg)
+{
+	INTEGER IsDetected;
+	INTEGER Value;
+	STRING ServerTx[500];
+
+	if (msg.MessageType = "Request" && msg.Operation = "Get" && msg.Property = "State")
+	{
+		if (msg.DeviceType = "OccupancySensor")
+		{
+			IsDetected = OccupancySensor_State[msg.DeviceId];
+
+		} else if (msg.DeviceType = "MotionSensor"){
+			IsDetected = MotionSensor_State[msg.DeviceId];
+		
+		}
+		Value = IsDetected;
+		msg.Value = Value;
+		msg.MessageType = "Response";
+		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
+		SocketTx(ServerTx);
+	}
+
+
+	if (msg.MessageType = "Event" && msg.Operation = "Set" && msg.Property = "State")
+	{
+		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
+		SocketTx(ServerTx);
+	}
+}
+
+EventHandler WindowCoveringHandler(Message msg)
+{
+	INTEGER PositionValue;
+	INTEGER Value;
+	STRING ServerTx[500];
+	
+	
+	if (msg.MessageType = "Request" && msg.Operation = "Get")
+	{
+		
+		PositionValue = Get_CurrentPosition[msg.DeviceId];
+		Value = PositionValue;
+		msg.Value = Value;
+		msg.MessageType = "Response";
+		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
+		SocketTx(ServerTx);
+	}
+
+	if (msg.MessageType = "Request" && msg.Operation = "Set" && msg.Property = "TargetPosition")
+	{
+		Value = msg.Value;
+
+		Set_Position[msg.DeviceId] = Value;
+
+		msg.MessageType = "Response";
+		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
+		SocketTx(ServerTx);
+	}
+
+	if (msg.MessageType = "Event" && msg.Operation = "Set" && msg.Property = "CurrentPosition")
+	{
+		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
+		SocketTx(ServerTx);
+	}
+
+}
+
 Function SocketRx()
 {
 	STRING Temp$[65000];
@@ -444,20 +512,6 @@ CHANGE Light_IsOn
 	msg.Property = "Power";
 	msg.Value = Light_IsOn[Id];
 	MessageBroker.TriggerLightSwitchMessage(msg);
-}
-
-CHANGE DimLight_IsOn
-{
-	Message msg;
-	INTEGER Id;
-	Id = GetLastModifiedArrayIndex();
-	msg.MessageType = "Event";
-	msg.DeviceType = "LightDimmer";
-	msg.DeviceId = Id;
-	msg.Operation = "Set";
-	msg.Property = "Power";
-	msg.Value = DimLight_IsOn[Id];
-	MessageBroker.TriggerLightDimmerMessage(msg);
 }
 
 CHANGE DimLight_Level
@@ -562,6 +616,56 @@ CHANGE Fan_IsHigh
 		MessageBroker.TriggerFanMessage(msg);
 	}
 }
+
+CHANGE MotionSensor_State
+{
+	Message msg;
+	INTEGER Id;
+	Id = GetLastModifiedArrayIndex();
+	
+	msg.MessageType = "Event";
+	msg.DeviceType = "MotionSensor";
+	msg.DeviceId = Id;
+	msg.Operation = "Set";
+	msg.Property = "State";
+	msg.Value = MotionSensor_State[Id];
+	MessageBroker.TriggerSensorStateMessage(msg);
+	
+}
+
+CHANGE OccupancySensor_State
+{
+	Message msg;
+	INTEGER Id;
+	Id = GetLastModifiedArrayIndex();
+	
+	msg.MessageType = "Event";
+	msg.DeviceType = "OccupancySensor";
+	msg.DeviceId = Id;
+	msg.Operation = "Set";
+	msg.Property = "State";
+	msg.Value = OccupancySensor_State[Id];
+	MessageBroker.TriggerSensorStateMessage(msg);
+	
+}
+
+CHANGE Get_CurrentPosition
+{
+	Message msg;
+	INTEGER Id;
+	Id = GetLastModifiedArrayIndex();
+	
+	msg.MessageType = "Event";
+	msg.DeviceType = "WindowCovering";
+	msg.DeviceId = Id;
+	msg.Operation = "Set";
+	msg.Property = "CurrentPosition";
+	msg.Value = Get_CurrentPosition[Id];
+	MessageBroker.TriggerWindowCoveringMessage(msg);
+	
+}
+
+
 
 SOCKETCONNECT TCPServer
 {

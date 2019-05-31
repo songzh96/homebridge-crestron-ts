@@ -29,3 +29,9 @@ export function uuid(len: number, radix: number) {
 
     return uuid.join("");
   }
+
+  export function timeout(ms: number) {
+    return new Promise((resolve) => {
+      setTimeout(resolve, ms);
+    });
+  }

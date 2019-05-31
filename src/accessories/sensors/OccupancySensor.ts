@@ -23,7 +23,7 @@ export class OccupancySensor extends BaseAccessory {
 
     this.occupancySensor = OccupancySensorService;
 
-    api.on(`Event-${this.type}-${this.id}-Get-sensorState`, (value: any) => {
+    api.on(`Event-${this.type}-${this.id}-Set-State`, (value: any) => {
       sensorState.updateValue(Boolean(value));
     });
 

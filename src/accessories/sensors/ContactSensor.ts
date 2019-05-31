@@ -23,8 +23,9 @@ export class ContactSensor extends BaseAccessory {
 
     this.contactSensor = contactService;
 
-    api.on(`Event-${this.type}-${this.id}-Get-sensorState`, (value: any) => {
+    api.on(`Event-${this.type}-${this.id}-Set-State`, (value: any) => {
       sensorState.updateValue(Boolean(value));
+      
     });
 
     return [this.infoService, contactService];
