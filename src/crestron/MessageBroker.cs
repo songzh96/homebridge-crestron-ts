@@ -19,10 +19,11 @@ namespace SSharpHomebridge
         public static event MessageHandler OnLightSwitchMessage;
         public static event MessageHandler OnLightDimmerMessage;
         public static event MessageHandler OnSwitchMessage;
-        public static event MessageHandler OnWidowCoveringMessage;
+        public static event MessageHandler OnWindowCoveringMessage;
         public static event MessageHandler OnHeaterCoolerMessage;
         public static event MessageHandler OnFanMessage;
         public static event MessageHandler OnSensorStateMessage;
+        public static event MessageHandler OnTelevisionMessage;
         /// <summary>
         /// SIMPL+ can only execute the default constructor. If you have variables that require initialization, please
         /// use an Initialize method
@@ -66,6 +67,11 @@ namespace SSharpHomebridge
             OnHeaterCoolerMessage(message);
         }
 
+        public static void TriggerTelevisionMessage(Message message)
+        {
+            OnTelevisionMessage(message);
+        }
+
         public static void ParseMessage(string messageJson)
         {
             var message = JsonConvert.DeserializeObject<Message>(messageJson);
@@ -94,6 +100,10 @@ namespace SSharpHomebridge
 
                 case "HeaterCooler":
                     TriggerHeaterCoolerMessage(message);
+                    break;
+
+                case "Television":
+                    TriggerTelevisionMessage(message);
                     break;
 
                 case "OccupancySensor":

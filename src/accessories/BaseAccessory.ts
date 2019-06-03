@@ -28,7 +28,7 @@ export class BaseAccessory {
     this.type = accessoryConfig.type;
     this.name = accessoryConfig.name;
     this.manufacturer = "crestron";
-    this.model = accessoryConfig.type + "ID " + accessoryConfig.id;
+    this.model = accessoryConfig.type + " ID" + accessoryConfig.id;
     this.serialnumber = uuid(8, 16);
     this.frmwarerevision = "2.0";
     this.platform = platform;

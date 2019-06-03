@@ -2,7 +2,6 @@ import { BaseAccessory } from "./BaseAccessory";
 import {
   getPosition, setTargetPosition
 } from "./Callbacks";
-import { watchFile } from "fs";
 import { timeout } from "homebridge-crestron-ts/src/unit/unit";
 
 export class WindowCovering extends BaseAccessory {

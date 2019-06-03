@@ -12,7 +12,8 @@ import { ContactSensor } from './accessories/sensors/ContactSensor';
 import { CarbonMonoxideSensor } from './accessories/sensors/CarbonMonoxideSensor';
 import { CarbonDioxideSensor } from './accessories/sensors/CarbonDioxideSensor';
 import { SmokeSensor } from './accessories/sensors/SmokeSensor';
-import {groupBy,each} from "lodash";
+import { groupBy, each } from "lodash";
+import { Television } from 'homebridge-crestron-ts/src/accessories/Television';
 
 const version = "2.0.0";
 
@@ -89,9 +90,10 @@ class Platform {
         .toString()
         .split('||')
         .filter(jsonMessage => jsonMessage.length > 0);
+        this.log(jsonMessages);
       jsonMessages.forEach(jsonMessage => {
         const message = JSON.parse(jsonMessage);
-
+        
         const {
           MessageType: messageType,
           DeviceType: deviceType,
@@ -164,16 +166,15 @@ class Platform {
     const accessories = [];
     const { devices } = this.config;
     const devicesByType = groupBy(devices, 'type');
-    
+
     /*
       Here we register the devices with Homebridge. We group the devices listed
       in the config file by type and we call the appropriate accessory constructor.
      */
 
-    
+
     each(devicesByType, (devices: { forEach: (arg0: (device: any) => void) => void; }, type: any) => {
-      devices.forEach(device => {        
-        console.log(type);
+      devices.forEach(device => {
         switch (type) {
           case 'LightSwitch':
             accessories.push(new LightSwitch(this.log, device, this));
@@ -197,6 +198,10 @@ class Platform {
 
           case 'HeaterCooler':
             accessories.push(new HeaterCooler(this.log, device, this));
+            return;
+
+          case 'Television':
+            accessories.push(new Television(this.log, device, this));
             return;
 
           case 'OccupancySensor':

@@ -302,6 +302,7 @@ export function getSensorState(callback: (arg0: any, arg1: Boolean) => void) {
     Operation: "Get",
     Property: "State"
   })}||`;
+  
   platform.socket.write(jsonMessage);
   platform.socket.pendingGetRequests.set(
     `${this.type}-${this.id}-State`,
@@ -320,7 +321,7 @@ export function getSensorState(callback: (arg0: any, arg1: Boolean) => void) {
  * This function contains a lot of HAP Characteristic, you can refer to this document(https://github.com/KhaosT/HAP-NodeJS/blob/master/lib/gen/HomeKitTypes.js#L1580)
  * @param callback 
  */
-export function getValue(callback: (arg0: any, arg1: Number) => void) {
+export function getValue(property: string, callback: (arg0: any, arg1: Number) => void) {
   const { platform } = this;
   const { api } = platform;
   const jsonMessage = `${JSON.stringify({
@@ -328,16 +329,17 @@ export function getValue(callback: (arg0: any, arg1: Number) => void) {
     DeviceType: this.type,
     MessageType: "Request",
     Operation: "Get",
-    Property: "Value"
+    Property: property
   })}||`;
+  
   platform.socket.write(jsonMessage);
   platform.socket.pendingGetRequests.set(
-    `${this.type}-${this.id}-Value`,
+    `${this.type}-${this.id}-${property}`,
     jsonMessage
   );
 
-  api.once(`Response-${this.type}-${this.id}-Get-Value`, (value: Number) => {
-    platform.socket.pendingGetRequests.delete(`${this.type}-${this.id}-Value`);
+  api.once(`Response-${this.type}-${this.id}-Get-${property}`, (value: Number) => {
+    platform.socket.pendingGetRequests.delete(`${this.type}-${this.id}-${property}`);
     const r_value = value;
     callback(null, r_value);
   });
@@ -348,7 +350,7 @@ export function getValue(callback: (arg0: any, arg1: Number) => void) {
  * @param value 
  * @param callback 
  */
-export function setValue(value: Number, callback: () => void) {
+export function setValue(property: string, value: Number, callback: () => void) {
   const { platform } = this;
   const { api } = platform;
   const jsonMessage = `${JSON.stringify({
@@ -356,19 +358,18 @@ export function setValue(value: Number, callback: () => void) {
     DeviceType: this.type,
     MessageType: "Request",
     Operation: "Set",
-    Property: "Value",
+    Property: property,
     Value: value
   })}||`;
-
   this.platform.socket.write(jsonMessage);
-  api.emit(`Request-${this.type}-${this.id}-Set-Value`);
+  api.emit(`Request-${this.type}-${this.id}-Set-${property}`);
   platform.socket.pendingSetRequests.set(
-    `${this.type}-${this.id}-Value`,
+    `${this.type}-${this.id}-${property}`,
     jsonMessage
   );
 
-  api.once(`Response-${this.type}-${this.id}-Set-Value`, () => {
-    platform.socket.pendingSetRequests.delete(`${this.type}-${this.id}-Value`);
+  api.once(`Response-${this.type}-${this.id}-Set-${property}`, () => {
+    platform.socket.pendingSetRequests.delete(`${this.type}-${this.id}-${property}`);
     callback();
   });
 }

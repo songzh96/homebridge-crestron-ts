@@ -51,11 +51,28 @@ DIGITAL_INPUT MotionSensor_State[5];
 DIGITAL_INPUT _SKIP_;
 DIGITAL_INPUT OccupancySensor_State[5];
 DIGITAL_INPUT _SKIP_;
+DIGITAL_INPUT AcPower_State[2];
+DIGITAL_INPUT _SKIP_;
+DIGITAL_INPUT Ac_AutoState[2];
+DIGITAL_INPUT _SKIP_;
+DIGITAL_INPUT Ac_HeaterState[2];
+DIGITAL_INPUT _SKIP_;
+DIGITAL_INPUT Ac_CoolerState[2];
+DIGITAL_INPUT _SKIP_;
+DIGITAL_INPUT Television_IsMute[2];
+DIGITAL_INPUT _SKIP_;
+DIGITAL_INPUT Television_IsOn[2];
+DIGITAL_INPUT _SKIP_;
 
 ANALOG_INPUT DimLight_Level[10];
 ANALOG_INPUT _SKIP_;
 ANALOG_INPUT Get_CurrentPosition[2];
 ANALOG_INPUT _SKIP_;
+ANALOG_INPUT Ac_CurrentTemperature[2];
+ANALOG_INPUT _SKIP_;
+ANALOG_INPUT Television_GetVolume[2];
+ANALOG_INPUT _SKIP_;
+
 
 
 DIGITAL_OUTPUT _SKIP_,_SKIP_;
@@ -68,11 +85,31 @@ DIGITAL_OUTPUT Fan_Med[5];
 DIGITAL_OUTPUT Fan_Low[5];
 DIGITAL_OUTPUT Fan_Off[5];
 DIGITAL_OUTPUT _SKIP_;
+DIGITAL_OUTPUT AcPower_On[2];
+DIGITAL_OUTPUT _SKIP_;
+DIGITAL_OUTPUT AcPower_Off[2];
+DIGITAL_OUTPUT _SKIP_;
+DIGITAL_OUTPUT Ac_Auto[2];
+DIGITAL_OUTPUT _SKIP_;
+DIGITAL_OUTPUT Ac_Heater[2];
+DIGITAL_OUTPUT _SKIP_;
+DIGITAL_OUTPUT Ac_Cooler[2];
+DIGITAL_OUTPUT _SKIP_;
+DIGITAL_OUTPUT Television_Mute[2];
+DIGITAL_OUTPUT _SKIP_;
+DIGITAL_OUTPUT Television_On[2];
+DIGITAL_OUTPUT _SKIP_;
+DIGITAL_OUTPUT Television_Off[2];
+DIGITAL_OUTPUT _SKIP_;
 
 ANALOG_OUTPUT DimLight_Set[10];
 ANALOG_OUTPUT _SKIP_;
 ANALOG_OUTPUT Set_Position[2];
-ANALOG_INPUT _SKIP_;
+ANALOG_OUTPUT _SKIP_;
+ANALOG_OUTPUT Television_SetVolume[2];
+ANALOG_OUTPUT _SKIP_;
+ANALOG_OUTPUT Television_SetRemoteKey[2];
+ANALOG_OUTPUT _SKIP_;
 /*******************************************************************************************
   SOCKETS
   (Uncomment and define socket definitions as needed)
@@ -136,6 +173,8 @@ Function StartServer()
 	RegisterEvent(MessageBroker, OnFanMessage, FanMessageHandler);
 	RegisterEvent(MessageBroker, OnSensorStateMessage, SensorStateMessageHandler);
 	RegisterEvent(MessageBroker, OnWindowCoveringMessage, WindowCoveringHandler);
+	RegisterEvent(MessageBroker, OnHeaterCoolerMessage, HeaterCoolerHandler);
+	RegisterEvent(MessageBroker, OnTelevisionMessage, TelevisionHandler);
 
 	Status = SocketServerStartListen(TCPServer, IPAddress, Port);
 
@@ -159,20 +198,32 @@ Function SocketTx(STRING ServerTx)
 	}
 }
 
+Function ResponseMsg(Message msg)
+{
+	STRING ServerTx[500];
+	msg.MessageType = "Response";
+	ServerTx = MessageBroker.SerializeMessage(msg) + "||";
+	SocketTx(ServerTx);
+}
+
+Function EventMsg(Message msg)
+{
+	STRING ServerTx[128];
+	ServerTx = MessageBroker.SerializeMessage(msg) + "||";
+	SocketTx(ServerTx);
+}
+
 EventHandler LightSwitchMessageHandler(Message msg)
 {
 	INTEGER IsOn;
 	INTEGER Value;
-	STRING ServerTx[500];
 	IsOn = Light_IsOn[msg.DeviceId];
 
 	if (msg.MessageType = "Request" && msg.Operation = "Get" && msg.Property = "Power")
 	{
 		Value = IsOn;
 		msg.Value = Value;
-		msg.MessageType = "Response";
-		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
-		SocketTx(ServerTx);
+		ResponseMsg(msg);
 	}
 
 	if (msg.MessageType = "Request" && msg.Operation = "Set" && msg.Property = "Power")
@@ -189,16 +240,13 @@ EventHandler LightSwitchMessageHandler(Message msg)
 		}
 		else
 		{
-			msg.MessageType = "Response";
-			ServerTx = MessageBroker.SerializeMessage(msg) + "||";
-			SocketTx(ServerTx);
+			ResponseMsg(msg);
 		}
 	}
 
 	if (msg.MessageType = "Event" && msg.Operation = "Set" && msg.Property = "Power")
 	{
-		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
-		SocketTx(ServerTx);
+			EventMsg(msg);
 	}
 }
 
@@ -207,7 +255,6 @@ EventHandler LightDimmerMessageHandler(Message msg)
 	INTEGER IsOn;
 	INTEGER Level;
 	INTEGER Value;
-	STRING ServerTx[500];
 	Level = DimLight_Level[msg.DeviceId];
 
 	if (msg.MessageType = "Request" && msg.Operation = "Get" && msg.Property = "Power")
@@ -221,9 +268,7 @@ EventHandler LightDimmerMessageHandler(Message msg)
 		}
 		Value = IsOn;
 		msg.Value = Value;
-		msg.MessageType = "Response";
-		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
-		SocketTx(ServerTx);
+		ResponseMsg(msg);
 	}
 
 	if (msg.MessageType = "Request" && msg.Operation = "Get" && msg.Property = "Level")
@@ -231,8 +276,7 @@ EventHandler LightDimmerMessageHandler(Message msg)
 		Value = Level;
 		msg.Value = Value;
 		msg.MessageType = "Response";
-		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
-		SocketTx(ServerTx);
+		ResponseMsg(msg);
 	}
 
 	if (msg.MessageType = "Request" && msg.Operation = "Set" && msg.Property = "Power")
@@ -250,8 +294,7 @@ EventHandler LightDimmerMessageHandler(Message msg)
 		else
 		{
 			msg.MessageType = "Response";
-			ServerTx = MessageBroker.SerializeMessage(msg) + "||";
-			SocketTx(ServerTx);
+			ResponseMsg(msg);
 		}
 	}
 
@@ -264,8 +307,7 @@ EventHandler LightDimmerMessageHandler(Message msg)
 
 	if (msg.MessageType = "Event" && msg.Operation = "Set" && msg.Property = "Level")
 	{
-		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
-		SocketTx(ServerTx);
+		EventMsg(msg);
 	}
 }
 
@@ -273,16 +315,13 @@ EventHandler SwitchMessageHandler(Message msg)
 {
 	INTEGER IsOn;
 	INTEGER Value;
-	STRING ServerTx[500];
 	IsOn = Switch_IsOn[msg.DeviceId];
 
 	if (msg.MessageType = "Request" && msg.Operation = "Get" && msg.Property = "Power")
 	{
 		Value = IsOn;
 		msg.Value = Value;
-		msg.MessageType = "Response";
-		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
-		SocketTx(ServerTx);
+		ResponseMsg(msg);
 	}
 
 	if (msg.MessageType = "Request" && msg.Operation = "Set" && msg.Property = "Power")
@@ -299,16 +338,13 @@ EventHandler SwitchMessageHandler(Message msg)
 		}
 		else
 		{
-			msg.MessageType = "Response";
-			ServerTx = MessageBroker.SerializeMessage(msg) + "||";
-			SocketTx(ServerTx);
+			ResponseMsg(msg);
 		}
 	}
 
 	if (msg.MessageType = "Event" && msg.Operation = "Set" && msg.Property = "Power")
 	{
-		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
-		SocketTx(ServerTx);
+		EventMsg(msg);
 	}
 }
 
@@ -319,7 +355,6 @@ EventHandler FanMessageHandler(Message msg)
 	INTEGER IsMed;
 	INTEGER IsHigh;
 	INTEGER Value;
-	STRING ServerTx[500];
 	IsOff = Fan_IsOff[msg.DeviceId];
 	IsLow = Fan_IsLow[msg.DeviceId];
 	IsMed = Fan_IsMed[msg.DeviceId];
@@ -338,9 +373,7 @@ EventHandler FanMessageHandler(Message msg)
 			Value = 1;
 		}
 		msg.Value = Value;
-		msg.MessageType = "Response";
-		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
-		SocketTx(ServerTx);
+		ResponseMsg(msg);
 	}
 
 	if (msg.MessageType = "Request" && msg.Operation = "Get" && msg.Property = "PerValue")
@@ -360,8 +393,7 @@ EventHandler FanMessageHandler(Message msg)
 
 		msg.Value = Value;
 		msg.MessageType = "Response";
-		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
-		SocketTx(ServerTx);
+		ResponseMsg(msg);
 	}
 
 	if (msg.MessageType = "Request" && msg.Operation = "Set" && msg.Property = "Power")
@@ -379,8 +411,7 @@ EventHandler FanMessageHandler(Message msg)
 		else
 		{
 			msg.MessageType = "Response";
-			ServerTx = MessageBroker.SerializeMessage(msg) + "||";
-			SocketTx(ServerTx);
+			ResponseMsg(msg);
 		}
 	}
 
@@ -404,14 +435,12 @@ EventHandler FanMessageHandler(Message msg)
 
 	if (msg.MessageType = "Event" && msg.Operation = "Set" && msg.Property = "Power")
 	{
-		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
-		SocketTx(ServerTx);
+		EventMsg(msg);
 	}
 
 	if (msg.MessageType = "Event" && msg.Operation = "Set" && msg.Property = "Speed")
 	{
-		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
-		SocketTx(ServerTx);
+		EventMsg(msg);
 	}
 }
 
@@ -419,7 +448,6 @@ EventHandler SensorStateMessageHandler(Message msg)
 {
 	INTEGER IsDetected;
 	INTEGER Value;
-	STRING ServerTx[500];
 
 	if (msg.MessageType = "Request" && msg.Operation = "Get" && msg.Property = "State")
 	{
@@ -433,16 +461,13 @@ EventHandler SensorStateMessageHandler(Message msg)
 		}
 		Value = IsDetected;
 		msg.Value = Value;
-		msg.MessageType = "Response";
-		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
-		SocketTx(ServerTx);
+		ResponseMsg(msg);
 	}
 
 
 	if (msg.MessageType = "Event" && msg.Operation = "Set" && msg.Property = "State")
 	{
-		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
-		SocketTx(ServerTx);
+		EventMsg(msg);
 	}
 }
 
@@ -459,9 +484,7 @@ EventHandler WindowCoveringHandler(Message msg)
 		PositionValue = Get_CurrentPosition[msg.DeviceId];
 		Value = PositionValue;
 		msg.Value = Value;
-		msg.MessageType = "Response";
-		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
-		SocketTx(ServerTx);
+		ResponseMsg(msg);
 	}
 
 	if (msg.MessageType = "Request" && msg.Operation = "Set" && msg.Property = "TargetPosition")
@@ -470,15 +493,225 @@ EventHandler WindowCoveringHandler(Message msg)
 
 		Set_Position[msg.DeviceId] = Value;
 
-		msg.MessageType = "Response";
-		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
-		SocketTx(ServerTx);
+		ResponseMsg(msg);
 	}
 
 	if (msg.MessageType = "Event" && msg.Operation = "Set" && msg.Property = "CurrentPosition")
 	{
-		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
-		SocketTx(ServerTx);
+		EventMsg(msg);
+	}
+
+}
+
+EventHandler HeaterCoolerHandler(Message msg)
+{
+	INTEGER IsOn;
+	INTEGER Value;
+	STRING ServerTx[500];
+	IsOn = AcPower_State[msg.DeviceId];
+
+	if (msg.MessageType = "Request" && msg.Operation = "Get" && msg.Property = "Power")
+	{
+		Value = IsOn;
+		msg.Value = Value;
+		ResponseMsg(msg);
+	}
+
+	if (msg.MessageType = "Request" && msg.Operation = "Get" && msg.Property = "TargetState")
+	{
+		if (Ac_AutoState[msg.DeviceId] = 1)
+		{
+			Value = 0;
+		}
+		else if (Ac_CoolerState[msg.DeviceId] = 1)
+		{
+			Value = 2;
+		}
+		else if (Ac_HeaterState[msg.DeviceId] = 1)
+		{
+			Value = 1;
+		}
+		msg.Value = Value;
+		ResponseMsg(msg);
+	}
+
+	if (msg.MessageType = "Request" && msg.Operation = "Get" && msg.Property = "CurrentState")
+	{
+		if (Ac_AutoState[msg.DeviceId] = 1)
+		{
+			Value = 1;
+		}
+		else if (Ac_CoolerState[msg.DeviceId] = 1)
+		{
+			Value = 3;
+		}
+		else if (Ac_HeaterState[msg.DeviceId] = 1)
+		{
+			Value = 2;
+		}
+		
+		msg.Value = Value;
+		ResponseMsg(msg);
+	}
+
+	if (msg.MessageType = "Request" && msg.Operation = "Get" && msg.Property = "CurrentTemperature")
+	{
+		Value = Ac_CurrentTemperature[msg.DeviceId];
+		
+		msg.Value = Value;
+		ResponseMsg(msg);
+	}
+
+	if (msg.MessageType = "Request" && msg.Operation = "Set" && msg.Property = "Power")
+	{
+		Value = msg.Value;
+
+		if (Value = 1 && IsOn = 0)
+		{
+			PULSE(1, AcPower_On[msg.DeviceId]);
+		}
+		else if (Value = 0 && IsOn = 1)
+		{
+			PULSE(1, AcPower_Off[msg.DeviceId]);
+		}
+		else
+		{
+			ResponseMsg(msg);
+		}
+	}
+	
+	if (msg.MessageType = "Request" && msg.Operation = "Set" && msg.Property = "TargetState")
+	{
+		Value = msg.Value;
+		ResponseMsg(msg);
+
+		
+		if (Value = 0 )
+		{
+			PULSE(1, Ac_Auto[msg.DeviceId]);
+		}
+		else if (Value = 1)
+		{
+			PULSE(1, Ac_Heater[msg.DeviceId]);
+		}
+		else if (Value = 2)
+		{
+			PULSE(1, Ac_Cooler[msg.DeviceId]);
+		}
+		
+	}
+
+	if (msg.MessageType = "Event" && msg.Operation = "Set" && msg.Property = "Power")
+	{
+		EventMsg(msg);
+	}
+
+	if (msg.MessageType = "Event" && msg.Operation = "Set" && msg.Property = "TargetState")
+	{
+		EventMsg(msg);
+	}
+
+	if (msg.MessageType = "Event" && msg.Operation = "Set" && msg.Property = "CurrentTemperature")
+	{
+		EventMsg(msg);
+	}
+}
+
+EventHandler TelevisionHandler(Message msg)
+{
+	INTEGER IsOn;
+	INTEGER Value;
+	IsOn = Television_IsOn[msg.DeviceId];
+
+	if (msg.MessageType = "Request" && msg.Operation = "Get" && msg.Property = "Power")
+	{
+		print("%s",msg.DeviceType);
+		Value = IsOn;
+		msg.Value = Value;
+		ResponseMsg(msg);
+	}
+
+	if (msg.MessageType = "Request" && msg.Operation = "Get" && msg.Property = "Mute")
+	{
+		Value = Television_IsMute[msg.DeviceId];
+		msg.Value = Value;
+		ResponseMsg(msg);
+	}
+
+	if (msg.MessageType = "Request" && msg.Operation = "Get" && msg.Property = "Volume")
+	{
+		Value = Television_GetVolume[msg.DeviceId];
+		msg.Value = Value;
+		ResponseMsg(msg);
+	}
+
+	if (msg.MessageType = "Request" && msg.Operation = "Set" && msg.Property = "Power")
+	{
+		Value = msg.Value;
+
+		if (Value = 1 && IsOn = 0)
+		{
+			PULSE(1, Television_On[msg.DeviceId]);
+		}
+		else if (Value = 0 && IsOn = 1)
+		{
+			PULSE(1, Television_Off[msg.DeviceId]);
+		}
+		else
+		{
+			ResponseMsg(msg);
+		}
+	}
+
+	if (msg.MessageType = "Request" && msg.Operation = "Set" && msg.Property = "Mute")
+	{
+		Value = msg.Value;
+
+		if (Value = 1)
+		{
+			Television_Mute[msg.DeviceId] = 1;
+		}
+		else if (Value = 0 )
+		{
+			Television_Mute[msg.DeviceId] = 0;
+		}
+		else
+		{
+			ResponseMsg(msg);
+		}
+	}
+
+	if (msg.MessageType = "Request" && msg.Operation = "Set" && msg.Property = "Volume")
+	{
+		Value = msg.Value;
+		ResponseMsg(msg);
+		
+		Television_SetVolume[msg.DeviceId] = Value;
+		
+	}
+
+	if (msg.MessageType = "Request" && msg.Operation = "Set" && msg.Property = "RemoteKey")
+	{
+		Value = msg.Value;
+		ResponseMsg(msg);
+		
+		Television_SetRemoteKey[msg.DeviceId] = Value;
+		
+	}
+
+	if (msg.MessageType = "Event" && msg.Operation = "Set" && msg.Property = "Power")
+	{
+			EventMsg(msg);
+	}
+
+	if (msg.MessageType = "Event" && msg.Operation = "Set" && msg.Property = "Mute")
+	{
+			EventMsg(msg);
+	}
+
+	if (msg.MessageType = "Event" && msg.Operation = "Set" && msg.Property = "Volume")
+	{
+			EventMsg(msg);
 	}
 
 }
@@ -665,6 +898,133 @@ CHANGE Get_CurrentPosition
 	
 }
 
+CHANGE AcPower_State
+{
+	Message msg;
+	INTEGER Id;
+	Id = GetLastModifiedArrayIndex();
+	
+	msg.MessageType = "Event";
+	msg.DeviceType = "HeaterCooler";
+	msg.DeviceId = Id;
+	msg.Operation = "Set";
+	msg.Property = "Power";
+	msg.Value = AcPower_State[Id];
+	MessageBroker.TriggerHeaterCoolerMessage(msg);
+	
+}
+
+PUSH Ac_CoolerState
+{
+	Message msg;
+	INTEGER Id;
+	Id = GetLastModifiedArrayIndex();
+	
+	msg.MessageType = "Event";
+	msg.DeviceType = "HeaterCooler";
+	msg.DeviceId = Id;
+	msg.Operation = "Set";
+	msg.Property = "TargetState";
+	msg.Value = 2;
+	MessageBroker.TriggerHeaterCoolerMessage(msg);
+	
+}
+
+PUSH Ac_AutoState
+{
+	Message msg;
+	INTEGER Id;
+	Id = GetLastModifiedArrayIndex();
+	
+	msg.MessageType = "Event";
+	msg.DeviceType = "HeaterCooler";
+	msg.DeviceId = Id;
+	msg.Operation = "Set";
+	msg.Property = "TargetState";
+	msg.Value = 0;
+	MessageBroker.TriggerHeaterCoolerMessage(msg);
+	
+}
+
+PUSH Ac_HeaterState
+{
+	Message msg;
+	INTEGER Id;
+	Id = GetLastModifiedArrayIndex();
+	
+	msg.MessageType = "Event";
+	msg.DeviceType = "HeaterCooler";
+	msg.DeviceId = Id;
+	msg.Operation = "Set";
+	msg.Property = "TargetState";
+	msg.Value = 1;
+	MessageBroker.TriggerHeaterCoolerMessage(msg);
+	
+}
+
+CHANGE Ac_CurrentTemperature
+{
+	Message msg;
+	INTEGER Id;
+	Id = GetLastModifiedArrayIndex();
+	
+	msg.MessageType = "Event";
+	msg.DeviceType = "HeaterCooler";
+	msg.DeviceId = Id;
+	msg.Operation = "Set";
+	msg.Property = "CurrentTemperature";
+	msg.Value = Ac_CurrentTemperature[msg.DeviceId];
+	MessageBroker.TriggerHeaterCoolerMessage(msg);
+	
+}
+
+CHANGE Television_GetVolume
+{
+	Message msg;
+	INTEGER Id;
+	Id = GetLastModifiedArrayIndex();
+	
+	msg.MessageType = "Event";
+	msg.DeviceType = "Television";
+	msg.DeviceId = Id;
+	msg.Operation = "Set";
+	msg.Property = "Volume";
+	msg.Value = Television_GetVolume[msg.DeviceId];
+	MessageBroker.TriggerTelevisionMessage(msg);
+	
+}
+
+CHANGE Television_IsMute
+{
+	Message msg;
+	INTEGER Id;
+	Id = GetLastModifiedArrayIndex();
+	
+	msg.MessageType = "Event";
+	msg.DeviceType = "Television";
+	msg.DeviceId = Id;
+	msg.Operation = "Set";
+	msg.Property = "Mute";
+	msg.Value = Television_IsMute[msg.DeviceId];
+	MessageBroker.TriggerTelevisionMessage(msg);
+	
+}
+
+CHANGE Television_IsOn
+{
+	Message msg;
+	INTEGER Id;
+	Id = GetLastModifiedArrayIndex();
+	
+	msg.MessageType = "Event";
+	msg.DeviceType = "Television";
+	msg.DeviceId = Id;
+	msg.Operation = "Set";
+	msg.Property = "Power";
+	msg.Value = Television_IsOn[msg.DeviceId];
+	MessageBroker.TriggerTelevisionMessage(msg);
+	
+}
 
 
 SOCKETCONNECT TCPServer

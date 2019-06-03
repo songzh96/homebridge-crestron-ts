@@ -3251,7 +3251,7 @@ class BaseAccessory {
     this.type = accessoryConfig.type;
     this.name = accessoryConfig.name;
     this.manufacturer = "crestron";
-    this.model = accessoryConfig.type + "ID " + accessoryConfig.id;
+    this.model = accessoryConfig.type + " ID" + accessoryConfig.id;
     this.serialnumber = uuid(8, 16);
     this.frmwarerevision = "2.0";
     this.platform = platform;
@@ -3566,7 +3566,7 @@ function getSensorState(callback) {
  * @param callback 
  */
 
-function getValue$1(callback) {
+function getValue$1(property, callback) {
   const {
     platform
   } = this;
@@ -3578,12 +3578,12 @@ function getValue$1(callback) {
     DeviceType: this.type,
     MessageType: "Request",
     Operation: "Get",
-    Property: "Value"
+    Property: property
   })}||`;
   platform.socket.write(jsonMessage);
-  platform.socket.pendingGetRequests.set(`${this.type}-${this.id}-Value`, jsonMessage);
-  api.once(`Response-${this.type}-${this.id}-Get-Value`, value => {
-    platform.socket.pendingGetRequests.delete(`${this.type}-${this.id}-Value`);
+  platform.socket.pendingGetRequests.set(`${this.type}-${this.id}-${property}`, jsonMessage);
+  api.once(`Response-${this.type}-${this.id}-Get-${property}`, value => {
+    platform.socket.pendingGetRequests.delete(`${this.type}-${this.id}-${property}`);
     const r_value = value;
     callback(null, r_value);
   });
@@ -3594,7 +3594,7 @@ function getValue$1(callback) {
  * @param callback 
  */
 
-function setValue(value, callback) {
+function setValue(property, value, callback) {
   const {
     platform
   } = this;
@@ -3606,14 +3606,14 @@ function setValue(value, callback) {
     DeviceType: this.type,
     MessageType: "Request",
     Operation: "Set",
-    Property: "Value",
+    Property: property,
     Value: value
   })}||`;
   this.platform.socket.write(jsonMessage);
-  api.emit(`Request-${this.type}-${this.id}-Set-Value`);
-  platform.socket.pendingSetRequests.set(`${this.type}-${this.id}-Value`, jsonMessage);
-  api.once(`Response-${this.type}-${this.id}-Set-Value`, () => {
-    platform.socket.pendingSetRequests.delete(`${this.type}-${this.id}-Value`);
+  api.emit(`Request-${this.type}-${this.id}-Set-${property}`);
+  platform.socket.pendingSetRequests.set(`${this.type}-${this.id}-${property}`, jsonMessage);
+  api.once(`Response-${this.type}-${this.id}-Set-${property}`, () => {
+    platform.socket.pendingSetRequests.delete(`${this.type}-${this.id}-${property}`);
     callback();
   });
 }
@@ -3777,13 +3777,9 @@ class WindowCovering extends BaseAccessory {
     this.windowCoveringService = WindowCoveringService;
     api.on(`Event-${this.type}-${this.id}-Set-CurrentPosition`, async value => {
       targetPosition.updateValue(value);
-      await timeout(3000);
-      positionState.updateValue(2);
-      await timeout(2000);
+      await timeout(5000);
+      positionState.updateValue(Characteristic.PositionState.STOPPED);
       currPosition.updateValue(value);
-    });
-    api.on(`Event-${this.type}-${this.id}-Set-TargetPosition`, value => {
-      targetPosition.updateValue(value);
     });
     return [this.infoService, WindowCoveringService];
   }
@@ -3812,33 +3808,31 @@ class HeaterCooler extends BaseAccessory {
     } = api;
     const HeaterCoolerService = new Service.HeaterCooler();
     const Power = HeaterCoolerService.getCharacteristic(Characteristic.Active).on("get", getPowerState.bind(this)).on("set", setPowerState.bind(this));
-    const TargetHeaterCoolerState = HeaterCoolerService.getCharacteristic(Characteristic.TargetHeaterCoolerState).on("get", getValue$1.bind(this)).on("set", setValue.bind(this));
-    const CurrentHeaterCoolerState = HeaterCoolerService.getCharacteristic(Characteristic.CurrentHeaterCoolerState).on("get", getValue$1.bind(this));
-    const CurrentTemperature = HeaterCoolerService.getCharacteristic(Characteristic.CurrentTemperature).setProps({
-      minValue: 16,
-      maxValue: 32
-    }).on('get', getValue$1.bind(this));
+    const TargetHeaterCoolerState = HeaterCoolerService.getCharacteristic(Characteristic.TargetHeaterCoolerState).on("get", getValue$1.bind(this, "TargetState")).on("set", setValue.bind(this, "TargetState"));
+    const CurrentHeaterCoolerState = HeaterCoolerService.getCharacteristic(Characteristic.CurrentHeaterCoolerState).on("get", getValue$1.bind(this, "CurrentState"));
+    const CurrentTemperature = HeaterCoolerService.getCharacteristic(Characteristic.CurrentTemperature).on('get', getValue$1.bind(this, "CurrentTemperature"));
     const TemperatureDisplayUnits = HeaterCoolerService.getCharacteristic(Characteristic.TemperatureDisplayUnits);
     TemperatureDisplayUnits.setValue(0);
     this.heaterCoolerService = HeaterCoolerService;
     api.on(`Event-${this.type}-${this.id}-Set-Power`, value => {
       Power.updateValue(value);
     });
-    api.on(`Event-${this.type}-${this.id}-Set-CurrValue`, value => {
+    api.on(`Event-${this.type}-${this.id}-Set-CurrentTemperature`, value => {
       CurrentTemperature.updateValue(value);
     });
-    api.on(`Event-${this.type}-${this.id}-Set-HCState`, value => {
+    api.on(`Event-${this.type}-${this.id}-Set-TargetState`, async value => {
       TargetHeaterCoolerState.updateValue(value);
       var currStateValue;
 
-      if (value == 1) {
-        currStateValue = 2;
-      } else if (value == 2) {
-        currStateValue = 3;
-      } else if (value == 0) {
+      if (value === 0) {
         currStateValue = 1;
+      } else if (value === 1) {
+        currStateValue = 2;
+      } else if (value === 2) {
+        currStateValue = 3;
       }
 
+      console.log("currStateValue " + currStateValue);
       CurrentHeaterCoolerState.updateValue(currStateValue);
     });
     return [this.infoService, HeaterCoolerService];
@@ -4070,6 +4064,58 @@ class SmokeSensor extends BaseAccessory {
 
 }
 
+class Television extends BaseAccessory {
+  constructor(log, accessoryConfig, platform) {
+    super(log, accessoryConfig, platform);
+
+    _defineProperty(this, "televisionService", void 0);
+
+    _defineProperty(this, "speakerService", void 0);
+
+    _defineProperty(this, "inputs", void 0);
+  }
+
+  getServices() {
+    const {
+      platform
+    } = this;
+    const {
+      api
+    } = platform;
+    const {
+      hap: {
+        Characteristic,
+        Service
+      }
+    } = api;
+    const TelevisionService = new Service.Television();
+    const powerState = TelevisionService.getCharacteristic(Characteristic.Active).on('get', getPowerState.bind(this)).on('set', setPowerState.bind(this));
+    TelevisionService.setCharacteristic(Characteristic.ConfiguredName, this.name);
+    TelevisionService.setCharacteristic(Characteristic.SleepDiscoveryMode, Characteristic.SleepDiscoveryMode.ALWAYS_DISCOVERABLE);
+    const remoteKey = TelevisionService.getCharacteristic(Characteristic.RemoteKey).on("set", setValue.bind(this, "RemoteKey"));
+    const activeIdentifier = TelevisionService.setCharacteristic(Characteristic.ActiveIdentifier, 0);
+    this.televisionService = TelevisionService; // Configure HomeKit TV Volume Control
+
+    const SpeakerService = new Service.TelevisionSpeaker();
+    SpeakerService.setCharacteristic(Characteristic.Active, Characteristic.Active.ACTIVE).setCharacteristic(Characteristic.VolumeControlType, Characteristic.VolumeControlType.ABSOLUTE);
+    const volume = SpeakerService.getCharacteristic(Characteristic.Volume).on("get", getValue$1.bind(this, "Volume")).on("set", setValue.bind(this, "Volume"));
+    const mute = SpeakerService.getCharacteristic(Characteristic.Mute).on("get", getValue$1.bind(this, "Mute")).on("set", setValue.bind(this, "Mute"));
+    this.speakerService = SpeakerService;
+    this.televisionService.addLinkedService(this.speakerService);
+    api.on(`Event-${this.type}-${this.id}-Set-Power`, value => {
+      powerState.updateValue(Boolean(value));
+    });
+    api.on(`Event-${this.type}-${this.id}-Set-Volume`, value => {
+      volume.updateValue(value);
+    });
+    api.on(`Event-${this.type}-${this.id}-Set-Mute`, value => {
+      mute.updateValue(value);
+    });
+    return [this.infoService, TelevisionService];
+  }
+
+}
+
 const version = "2.0.0";
 function index (homebridge) {
   homebridge.registerPlatform('homebridge-crestron', 'CrestronS', Platform);
@@ -4139,6 +4185,7 @@ class Platform {
 
     this.socket.on('data', data => {
       const jsonMessages = data.toString().split('||').filter(jsonMessage => jsonMessage.length > 0);
+      this.log(jsonMessages);
       jsonMessages.forEach(jsonMessage => {
         const message = JSON.parse(jsonMessage);
         const {
@@ -4208,8 +4255,6 @@ class Platform {
 
     each(devicesByType, (devices, type) => {
       devices.forEach(device => {
-        console.log(type);
-
         switch (type) {
           case 'LightSwitch':
             accessories.push(new LightSwitch(this.log, device, this));
@@ -4233,6 +4278,10 @@ class Platform {
 
           case 'HeaterCooler':
             accessories.push(new HeaterCooler(this.log, device, this));
+            return;
+
+          case 'Television':
+            accessories.push(new Television(this.log, device, this));
             return;
 
           case 'OccupancySensor':
