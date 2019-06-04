@@ -302,7 +302,7 @@ export function getSensorState(callback: (arg0: any, arg1: Boolean) => void) {
     Operation: "Get",
     Property: "State"
   })}||`;
-  
+
   platform.socket.write(jsonMessage);
   platform.socket.pendingGetRequests.set(
     `${this.type}-${this.id}-State`,
@@ -331,7 +331,7 @@ export function getValue(property: string, callback: (arg0: any, arg1: Number) =
     Operation: "Get",
     Property: property
   })}||`;
-  
+
   platform.socket.write(jsonMessage);
   platform.socket.pendingGetRequests.set(
     `${this.type}-${this.id}-${property}`,
@@ -361,6 +361,7 @@ export function setValue(property: string, value: Number, callback: () => void) 
     Property: property,
     Value: value
   })}||`;
+  console.log(this.type);
   this.platform.socket.write(jsonMessage);
   api.emit(`Request-${this.type}-${this.id}-Set-${property}`);
   platform.socket.pendingSetRequests.set(
@@ -373,3 +374,22 @@ export function setValue(property: string, value: Number, callback: () => void) 
     callback();
   });
 }
+
+export function setInput(inputList: any[], desiredInput: number, callback: (arg0: any, arg1: any) => void) {
+  let input = inputList[desiredInput - 1];
+
+  if (input.type === "APPLICATION") {
+    // this.platform.soc.sendRequest("command", "X_LaunchApp", "<X_AppType>vc_app</X_AppType><X_LaunchKeyword>product_id=" + input.appID + "</X_LaunchKeyword>");
+    this.log("Opening " + input.name + " app");
+  } else if (input.type === "TV") {
+    // this.tv.sendCommand("AD_CHANGE");
+    this.log("Switching to TV");
+  } else {
+    // this.tv.sendCommand(input.id.toLowerCase().replace(" ", ""));
+    this.log("Switching to " + input.name);
+  }
+  callback(null, input);
+}
+
+
+

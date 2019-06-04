@@ -90,7 +90,6 @@ class Platform {
         .toString()
         .split('||')
         .filter(jsonMessage => jsonMessage.length > 0);
-        this.log(jsonMessages);
       jsonMessages.forEach(jsonMessage => {
         const message = JSON.parse(jsonMessage);
         

@@ -3609,6 +3609,7 @@ function setValue(property, value, callback) {
     Property: property,
     Value: value
   })}||`;
+  console.log(this.type);
   this.platform.socket.write(jsonMessage);
   api.emit(`Request-${this.type}-${this.id}-Set-${property}`);
   platform.socket.pendingSetRequests.set(`${this.type}-${this.id}-${property}`, jsonMessage);
@@ -3616,6 +3617,22 @@ function setValue(property, value, callback) {
     platform.socket.pendingSetRequests.delete(`${this.type}-${this.id}-${property}`);
     callback();
   });
+}
+function setInput(inputList, desiredInput, callback) {
+  let input = inputList[desiredInput - 1];
+
+  if (input.type === "APPLICATION") {
+    // this.platform.soc.sendRequest("command", "X_LaunchApp", "<X_AppType>vc_app</X_AppType><X_LaunchKeyword>product_id=" + input.appID + "</X_LaunchKeyword>");
+    this.log("Opening " + input.name + " app");
+  } else if (input.type === "TV") {
+    // this.tv.sendCommand("AD_CHANGE");
+    this.log("Switching to TV");
+  } else {
+    // this.tv.sendCommand(input.id.toLowerCase().replace(" ", ""));
+    this.log("Switching to " + input.name);
+  }
+
+  callback(null, input);
 }
 
 class Fan extends BaseAccessory {
@@ -4073,6 +4090,8 @@ class Television extends BaseAccessory {
     _defineProperty(this, "speakerService", void 0);
 
     _defineProperty(this, "inputs", void 0);
+
+    this.inputs = accessoryConfig["inputs"];
   }
 
   getServices() {
@@ -4093,15 +4112,19 @@ class Television extends BaseAccessory {
     TelevisionService.setCharacteristic(Characteristic.ConfiguredName, this.name);
     TelevisionService.setCharacteristic(Characteristic.SleepDiscoveryMode, Characteristic.SleepDiscoveryMode.ALWAYS_DISCOVERABLE);
     const remoteKey = TelevisionService.getCharacteristic(Characteristic.RemoteKey).on("set", setValue.bind(this, "RemoteKey"));
-    const activeIdentifier = TelevisionService.setCharacteristic(Characteristic.ActiveIdentifier, 0);
     this.televisionService = TelevisionService; // Configure HomeKit TV Volume Control
 
-    const SpeakerService = new Service.TelevisionSpeaker();
+    const SpeakerService = new Service.TelevisionSpeaker(this.name + " Volume", "volumeService");
     SpeakerService.setCharacteristic(Characteristic.Active, Characteristic.Active.ACTIVE).setCharacteristic(Characteristic.VolumeControlType, Characteristic.VolumeControlType.ABSOLUTE);
     const volume = SpeakerService.getCharacteristic(Characteristic.Volume).on("get", getValue$1.bind(this, "Volume")).on("set", setValue.bind(this, "Volume"));
     const mute = SpeakerService.getCharacteristic(Characteristic.Mute).on("get", getValue$1.bind(this, "Mute")).on("set", setValue.bind(this, "Mute"));
     this.speakerService = SpeakerService;
     this.televisionService.addLinkedService(this.speakerService);
+    const activeIdentifier = TelevisionService.getCharacteristic(Characteristic.ActiveIdentifier).on("set", setInput.bind(this, this.inputs));
+    var configuredInputs = this.setupInputs();
+    configuredInputs.forEach(input => {
+      this.televisionService.addLinkedService(input);
+    });
     api.on(`Event-${this.type}-${this.id}-Set-Power`, value => {
       powerState.updateValue(Boolean(value));
     });
@@ -4111,7 +4134,45 @@ class Television extends BaseAccessory {
     api.on(`Event-${this.type}-${this.id}-Set-Mute`, value => {
       mute.updateValue(value);
     });
+    this.log("televisionService complete.");
     return [this.infoService, TelevisionService];
+  }
+
+  setupInputs() {
+    var configuredInputs = [];
+    var counter = 1;
+    this.inputs.forEach(input => {
+      let id = input.id;
+      let name = input.name;
+      let type = this.determineInputType(input.type);
+      this.log("Adding input " + counter + ": Name: " + name + ", Type: " + input.type);
+      configuredInputs.push(this.createInputSource(id, name, counter, type));
+      counter = counter + 1;
+    });
+    console.log(configuredInputs);
+    return configuredInputs;
+  }
+
+  createInputSource(id, name, counter, type) {
+    var input = new this.platform.api.hap.Service.InputSource(id.toLowerCase().replace(" ", ""), name);
+    input.setCharacteristic(this.platform.api.hap.Characteristic.Identifier, counter).setCharacteristic(this.platform.api.hap.Characteristic.ConfiguredName, name).setCharacteristic(this.platform.api.hap.Characteristic.InputSourceType, type).setCharacteristic(this.platform.api.hap.Characteristic.IsConfigured, this.platform.api.hap.Characteristic.IsConfigured.CONFIGURED);
+    return input;
+  }
+
+  determineInputType(type) {
+    switch (type) {
+      case "TV":
+        return this.platform.api.hap.Characteristic.InputSourceType.TUNER;
+
+      case "HDMI":
+        return this.platform.api.hap.Characteristic.InputSourceType.HDMI;
+
+      case "APPLICATION":
+        return this.platform.api.hap.Characteristic.InputSourceType.APPLICATION;
+
+      default:
+        return this.platform.api.hap.Characteristic.InputSourceType.OTHER;
+    }
   }
 
 }
@@ -4185,7 +4246,6 @@ class Platform {
 
     this.socket.on('data', data => {
       const jsonMessages = data.toString().split('||').filter(jsonMessage => jsonMessage.length > 0);
-      this.log(jsonMessages);
       jsonMessages.forEach(jsonMessage => {
         const message = JSON.parse(jsonMessage);
         const {
