@@ -68,6 +68,8 @@ ANALOG_INPUT DimLight_Level[10];
 ANALOG_INPUT _SKIP_;
 ANALOG_INPUT Get_CurrentPosition[2];
 ANALOG_INPUT _SKIP_;
+ANALOG_INPUT Ac_GetTargetTemperature[2];
+ANALOG_INPUT _SKIP_;
 ANALOG_INPUT Ac_CurrentTemperature[2];
 ANALOG_INPUT _SKIP_;
 ANALOG_INPUT Television_GetVolume[2];
@@ -105,6 +107,8 @@ DIGITAL_OUTPUT _SKIP_;
 ANALOG_OUTPUT DimLight_Set[10];
 ANALOG_OUTPUT _SKIP_;
 ANALOG_OUTPUT Set_Position[2];
+ANALOG_OUTPUT _SKIP_;
+ANALOG_OUTPUT Ac_TargetTemperature[2];
 ANALOG_OUTPUT _SKIP_;
 ANALOG_OUTPUT Television_SetVolume[2];
 ANALOG_OUTPUT _SKIP_;
@@ -489,11 +493,12 @@ EventHandler WindowCoveringHandler(Message msg)
 
 	if (msg.MessageType = "Request" && msg.Operation = "Set" && msg.Property = "TargetPosition")
 	{
+		ResponseMsg(msg);
+		
 		Value = msg.Value;
 
 		Set_Position[msg.DeviceId] = Value;
 
-		ResponseMsg(msg);
 	}
 
 	if (msg.MessageType = "Event" && msg.Operation = "Set" && msg.Property = "CurrentPosition")
@@ -562,6 +567,14 @@ EventHandler HeaterCoolerHandler(Message msg)
 		ResponseMsg(msg);
 	}
 
+	if (msg.MessageType = "Request" && msg.Operation = "Get" && msg.Property = "TargetTemperature")
+	{
+		Value = Ac_GetTargetTemperature[msg.DeviceId];
+		
+		msg.Value = Value;
+		ResponseMsg(msg);
+	}
+
 	if (msg.MessageType = "Request" && msg.Operation = "Set" && msg.Property = "Power")
 	{
 		Value = msg.Value;
@@ -601,6 +614,16 @@ EventHandler HeaterCoolerHandler(Message msg)
 		
 	}
 
+	if (msg.MessageType = "Request" && msg.Operation = "Set" && msg.Property = "TargetTemperature")
+	{
+		ResponseMsg(msg);
+		
+		Value = msg.Value;
+
+		Ac_TargetTemperature[msg.DeviceId] = Value;
+
+	}
+
 	if (msg.MessageType = "Event" && msg.Operation = "Set" && msg.Property = "Power")
 	{
 		EventMsg(msg);
@@ -612,6 +635,11 @@ EventHandler HeaterCoolerHandler(Message msg)
 	}
 
 	if (msg.MessageType = "Event" && msg.Operation = "Set" && msg.Property = "CurrentTemperature")
+	{
+		EventMsg(msg);
+	}
+
+	if (msg.MessageType = "Event" && msg.Operation = "Set" && msg.Property = "TargetTemperature")
 	{
 		EventMsg(msg);
 	}
@@ -976,6 +1004,21 @@ CHANGE Ac_CurrentTemperature
 	msg.Value = Ac_CurrentTemperature[msg.DeviceId];
 	MessageBroker.TriggerHeaterCoolerMessage(msg);
 	
+}
+
+CHANGE Ac_GetTargetTemperature
+{
+	Message msg;
+	INTEGER Id;
+	Id = GetLastModifiedArrayIndex();
+	
+	msg.MessageType = "Event";
+	msg.DeviceType = "HeaterCooler";
+	msg.DeviceId = Id;
+	msg.Operation = "Set";
+	msg.Property = "TargetTemperature";
+	msg.Value = Ac_GetTargetTemperature[msg.DeviceId];
+	MessageBroker.TriggerHeaterCoolerMessage(msg);
 }
 
 CHANGE Television_GetVolume

@@ -73,7 +73,6 @@ export class Television extends BaseAccessory {
             mute.updateValue(value);
         });
         
-        this.log("televisionService complete.");
        
         return [this.infoService, TelevisionService];
     }
@@ -92,7 +91,6 @@ export class Television extends BaseAccessory {
            
             counter = counter + 1;
         });
-        console.log(configuredInputs);
         return configuredInputs;
     }
 

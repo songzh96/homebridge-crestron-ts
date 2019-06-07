@@ -3609,7 +3609,6 @@ function setValue(property, value, callback) {
     Property: property,
     Value: value
   })}||`;
-  console.log(this.type);
   this.platform.socket.write(jsonMessage);
   api.emit(`Request-${this.type}-${this.id}-Set-${property}`);
   platform.socket.pendingSetRequests.set(`${this.type}-${this.id}-${property}`, jsonMessage);
@@ -3829,6 +3828,16 @@ class HeaterCooler extends BaseAccessory {
     const CurrentHeaterCoolerState = HeaterCoolerService.getCharacteristic(Characteristic.CurrentHeaterCoolerState).on("get", getValue$1.bind(this, "CurrentState"));
     const CurrentTemperature = HeaterCoolerService.getCharacteristic(Characteristic.CurrentTemperature).on('get', getValue$1.bind(this, "CurrentTemperature"));
     const TemperatureDisplayUnits = HeaterCoolerService.getCharacteristic(Characteristic.TemperatureDisplayUnits);
+    const CoolingThresholdTemperature = HeaterCoolerService.getCharacteristic(Characteristic.CoolingThresholdTemperature).setProps({
+      maxValue: 32,
+      minValue: 16,
+      minStep: 1
+    }).on('get', getValue$1.bind(this, "TargetTemperature")).on('set', setValue.bind(this, "TargetTemperature"));
+    const HeatingThresholdTemperature = HeaterCoolerService.getCharacteristic(Characteristic.HeatingThresholdTemperature).setProps({
+      maxValue: 32,
+      minValue: 16,
+      minStep: 1
+    }).on('get', getValue$1.bind(this, "TargetTemperature")).on('set', setValue.bind(this, "TargetTemperature"));
     TemperatureDisplayUnits.setValue(0);
     this.heaterCoolerService = HeaterCoolerService;
     api.on(`Event-${this.type}-${this.id}-Set-Power`, value => {
@@ -3836,6 +3845,10 @@ class HeaterCooler extends BaseAccessory {
     });
     api.on(`Event-${this.type}-${this.id}-Set-CurrentTemperature`, value => {
       CurrentTemperature.updateValue(value);
+    });
+    api.on(`Event-${this.type}-${this.id}-Set-TargetTemperature`, async value => {
+      await HeatingThresholdTemperature.updateValue(value);
+      CoolingThresholdTemperature.updateValue(value);
     });
     api.on(`Event-${this.type}-${this.id}-Set-TargetState`, async value => {
       TargetHeaterCoolerState.updateValue(value);
@@ -3849,7 +3862,6 @@ class HeaterCooler extends BaseAccessory {
         currStateValue = 3;
       }
 
-      console.log("currStateValue " + currStateValue);
       CurrentHeaterCoolerState.updateValue(currStateValue);
     });
     return [this.infoService, HeaterCoolerService];
@@ -4134,7 +4146,6 @@ class Television extends BaseAccessory {
     api.on(`Event-${this.type}-${this.id}-Set-Mute`, value => {
       mute.updateValue(value);
     });
-    this.log("televisionService complete.");
     return [this.infoService, TelevisionService];
   }
 
@@ -4149,7 +4160,6 @@ class Television extends BaseAccessory {
       configuredInputs.push(this.createInputSource(id, name, counter, type));
       counter = counter + 1;
     });
-    console.log(configuredInputs);
     return configuredInputs;
   }
 

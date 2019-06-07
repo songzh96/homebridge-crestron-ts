@@ -33,6 +33,29 @@ export class HeaterCooler extends BaseAccessory {
       .on('get', getValue.bind(this, "CurrentTemperature"));
     const TemperatureDisplayUnits = HeaterCoolerService
       .getCharacteristic(Characteristic.TemperatureDisplayUnits)
+    const CoolingThresholdTemperature = HeaterCoolerService
+      .getCharacteristic(Characteristic.CoolingThresholdTemperature)
+      .setProps(
+        {
+          maxValue: 32,
+          minValue: 16,
+          minStep: 1
+        }
+      )
+      .on('get', getValue.bind(this, "TargetTemperature"))
+      .on('set', setValue.bind(this, "TargetTemperature"));
+    const HeatingThresholdTemperature = HeaterCoolerService
+      .getCharacteristic(Characteristic.HeatingThresholdTemperature)
+      .setProps(
+        {
+          maxValue: 32,
+          minValue: 16,
+          minStep: 1
+        }
+      )
+      .on('get', getValue.bind(this, "TargetTemperature"))
+      .on('set', setValue.bind(this, "TargetTemperature"));
+
 
     TemperatureDisplayUnits.setValue(0);
 
@@ -44,6 +67,11 @@ export class HeaterCooler extends BaseAccessory {
 
     api.on(`Event-${this.type}-${this.id}-Set-CurrentTemperature`, (value: any) => {
       CurrentTemperature.updateValue(value);
+    });
+
+    api.on(`Event-${this.type}-${this.id}-Set-TargetTemperature`, async (value: any) => {
+      await HeatingThresholdTemperature.updateValue(value);
+      CoolingThresholdTemperature.updateValue(value);
     });
 
     api.on(`Event-${this.type}-${this.id}-Set-TargetState`, async (value: number) => {
@@ -62,8 +90,6 @@ export class HeaterCooler extends BaseAccessory {
       else if (value === 2) {
         currStateValue = 3;
       }
-
-      console.log("currStateValue " + currStateValue);
       CurrentHeaterCoolerState.updateValue(currStateValue);
     });
 

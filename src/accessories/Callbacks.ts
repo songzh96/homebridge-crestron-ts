@@ -361,7 +361,7 @@ export function setValue(property: string, value: Number, callback: () => void) 
     Property: property,
     Value: value
   })}||`;
-  console.log(this.type);
+
   this.platform.socket.write(jsonMessage);
   api.emit(`Request-${this.type}-${this.id}-Set-${property}`);
   platform.socket.pendingSetRequests.set(
