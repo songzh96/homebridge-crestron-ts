@@ -76,7 +76,7 @@ export class HeaterCooler extends BaseAccessory {
 
     api.on(`Event-${this.type}-${this.id}-Set-TargetState`, async (value: number) => {
 
-      TargetHeaterCoolerState.updateValue(value);
+      await TargetHeaterCoolerState.updateValue(value);
 
       var currStateValue: number;
       if (value === 0) {

@@ -1,0 +1,261 @@
+/*******************************************************************************************
+SIMPL+ Module Information
+(Fill in comments below)
+*******************************************************************************************/
+/*
+Dealer Name:
+System Name:
+System Number:
+Programmer: songzh
+Comments:
+*/
+
+/*******************************************************************************************
+Compiler Directives
+(Uncomment and declare compiler directives as needed)
+*******************************************************************************************/
+
+#SYMBOL_NAME "Homebridge-AirPurifier"
+#HINT "This module is the AirPurifier part of the homebridge"
+#PRINT_TO_TRACE
+#DEFAULT_VOLATILE
+#ENABLE_STACK_CHECKING
+#ENABLE_TRACE
+#CATEGORY "46" "cresKit" // Custom
+
+/*******************************************************************************************
+Include Libraries
+(Uncomment and include additional libraries as needed)
+
+Note:  Crestron does not recommend the use of the #INCLUDEPATH directive in SIMPL+ modules
+that are to be used in Crestron Studio.
+*******************************************************************************************/
+#INCLUDEPATH "C:\Program Files (x86)\Crestron\Simpl\Usrsplus\clz"
+#USER_SIMPLSHARP_LIBRARY "crestron-homebridge"
+
+
+/*******************************************************************************************
+DIGITAL, ANALOG and SERIAL INPUTS and OUTPUTS
+(Uncomment and declare inputs and outputs as needed)
+*******************************************************************************************/
+DIGITAL_INPUT Power_State[2];
+DIGITAL_INPUT _SKIP_,_SKIP_,_SKIP_;
+DIGITAL_INPUT AutoState[2];
+DIGITAL_INPUT _SKIP_,_SKIP_,_SKIP_,_SKIP_;
+
+
+ANALOG_INPUT Get_RotationSpeed[2];
+ANALOG_INPUT _SKIP_;
+STRING_INPUT Socket_Rx$[1][65000];
+STRING_INPUT _SKIP_;
+
+DIGITAL_OUTPUT Power_On[2];
+DIGITAL_OUTPUT Power_Off[2];
+DIGITAL_OUTPUT _SKIP_;
+DIGITAL_OUTPUT Auto[2];
+DIGITAL_OUTPUT _SKIP_;
+DIGITAL_OUTPUT Manual[2];
+DIGITAL_OUTPUT _SKIP_;
+
+ANALOG_OUTPUT RotationSpeed[2];
+ANALOG_OUTPUT _SKIP_;
+STRING_OUTPUT Socket_Tx$[1];
+STRING_OUTPUT _SKIP_;
+
+/*******************************************************************************************
+Functions
+(Add any additional functions here)
+Note:  Functions must be physically placed before the location in
+		the code that calls them.
+*******************************************************************************************/
+
+Function ResponseMsg(Message msg)
+{
+	STRING ServerTx[500];
+	msg.MessageType = "Response";
+	Socket_Tx$[1] = MessageBroker.SerializeMessage(msg) + "||";
+	
+}
+
+Function EventMsg(Message msg)
+{
+	STRING ServerTx[500];
+	Socket_Tx$[1] = MessageBroker.SerializeMessage(msg) + "||";
+}
+
+EventHandler AirPurifierHandler(Message msg)
+{
+	INTEGER IsOn;
+	INTEGER Value;
+	STRING ServerTx[500];
+	IsOn = Power_State[msg.DeviceId];
+
+	if (msg.MessageType = "Request" && msg.Operation = "Get" && msg.Property = "Power")
+	{
+		Value = IsOn;
+		msg.Value = Value;
+		ResponseMsg(msg);
+	}
+
+	if (msg.MessageType = "Request" && msg.Operation = "Get" && msg.Property = "TargetAirPurifierState")
+	{
+		Value = AutoState[msg.DeviceId];
+		msg.Value = Value;
+		ResponseMsg(msg);
+	}
+
+	if (msg.MessageType = "Request" && msg.Operation = "Get" && msg.Property = "RotationSpeed")
+	{
+		Value = Get_RotationSpeed[msg.DeviceId];
+		msg.Value = Value;
+		ResponseMsg(msg);
+	}
+
+	if (msg.MessageType = "Request" && msg.Operation = "Set" && msg.Property = "Power")
+	{
+		Value = msg.Value;
+
+		if (Value = 1 && IsOn = 0)
+		{
+			PULSE(1, Power_On[msg.DeviceId]);
+		}
+		else if (Value = 0 && IsOn = 1)
+		{
+			PULSE(1, Power_Off[msg.DeviceId]);
+		}
+		else
+		{
+			ResponseMsg(msg);
+		}
+	}
+	
+	if (msg.MessageType = "Request" && msg.Operation = "Set" && msg.Property = "TargetAirPurifierState")
+	{
+		
+		ResponseMsg(msg);
+		Value = msg.Value;
+		
+		if (Value = 1 && AutoState[msg.DeviceId] = 0)
+		{
+			PULSE(1,Auto[msg.DeviceId]);
+		} else
+		{
+			PULSE(1,Manual[msg.DeviceId]);
+		}		
+	}
+
+	if (msg.MessageType = "Request" && msg.Operation = "Set" && msg.Property = "RotationSpeed")
+	{
+		ResponseMsg(msg);
+		
+		Value = msg.Value;
+
+		RotationSpeed[msg.DeviceId] = Value;
+
+	}
+
+	if (msg.MessageType = "Event" && msg.Operation = "Set" && msg.Property = "Power")
+	{
+		EventMsg(msg);
+	}
+
+	if (msg.MessageType = "Event" && msg.Operation = "Set" && msg.Property = "TargetAirPurifierState")
+	{
+		EventMsg(msg);
+	}
+
+	if (msg.MessageType = "Event" && msg.Operation = "Set" && msg.Property = "RotationSpeed")
+	{
+		EventMsg(msg);
+	}
+}
+
+
+/*******************************************************************************************
+Event Handlers
+(Uncomment and declare additional event handlers as needed)
+*******************************************************************************************/
+CHANGE Power_State
+{
+	Message msg;
+	INTEGER Id;
+	Id = GetLastModifiedArrayIndex();
+	
+	msg.MessageType = "Event";
+	msg.DeviceType = "AirPurifier";
+	msg.DeviceId = Id;
+	msg.Operation = "Set";
+	msg.Property = "Power";
+	msg.Value = Power_State[Id];
+	MessageBroker.TriggerAirPurifierMessage(msg);
+	
+}
+
+CHANGE AutoState
+{
+	Message msg;
+	INTEGER Id;
+	Id = GetLastModifiedArrayIndex();
+	
+	msg.MessageType = "Event";
+	msg.DeviceType = "AirPurifier";
+	msg.DeviceId = Id;
+	msg.Operation = "Set";
+	msg.Property = "TargetAirPurifierState";
+	msg.Value = AutoState[Id];
+	MessageBroker.TriggerAirPurifierMessage(msg);
+	
+}
+
+CHANGE Get_RotationSpeed
+{
+	Message msg;
+	INTEGER Id;
+	Id = GetLastModifiedArrayIndex();
+	
+	msg.MessageType = "Event";
+	msg.DeviceType = "AirPurifier";
+	msg.DeviceId = Id;
+	msg.Operation = "Set";
+	msg.Property = "RotationSpeed";
+	msg.Value = Get_RotationSpeed[Id];
+	MessageBroker.TriggerAirPurifierMessage(msg);
+	
+}
+
+CHANGE Socket_Rx$
+{
+	STRING Temp$[65000];
+	STRING DeviceType[100];
+
+	Temp$ = Socket_Rx$[1];
+	DeviceType = MessageBroker.GetType(Temp$);
+	if (DeviceType = "AirPurifier")
+	{
+		MessageBroker.ParseMessage(Temp$);
+	}
+	else{
+		return;
+	}
+
+}
+
+/*******************************************************************************************
+Main()
+Uncomment and place one-time startup code here
+(This code will get called when the system starts up)
+*******************************************************************************************/
+
+Function Main()
+{
+	RegisterEvent(MessageBroker, OnAirPurifierMessage, AirPurifierHandler);
+
+	WaitForInitializationComplete();
+	// If you are reading any Input or Output variables, uncomment
+	//   the WaitForInitializationComplete statement above and read
+	//   them afterwards.  Input/Output variables will not have
+	//   their correct values set until after the logic processor
+	//   runs and propagates the values to them.
+	
+	Print("Program started!!!.\n");
+}

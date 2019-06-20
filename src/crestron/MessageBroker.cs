@@ -21,6 +21,7 @@ namespace SSharpHomebridge
         public static event MessageHandler OnSwitchMessage;
         public static event MessageHandler OnWindowCoveringMessage;
         public static event MessageHandler OnHeaterCoolerMessage;
+        public static event MessageHandler OnAirPurifierMessage;
         public static event MessageHandler OnFanMessage;
         public static event MessageHandler OnSensorStateMessage;
         public static event MessageHandler OnTelevisionMessage;
@@ -67,6 +68,11 @@ namespace SSharpHomebridge
             OnHeaterCoolerMessage(message);
         }
 
+        public static void TriggerAirPurifierMessage(Message message)
+        {
+            OnAirPurifierMessage(message);
+        }
+
         public static void TriggerTelevisionMessage(Message message)
         {
             OnTelevisionMessage(message);
@@ -75,7 +81,7 @@ namespace SSharpHomebridge
         public static void ParseMessage(string messageJson)
         {
             var message = JsonConvert.DeserializeObject<Message>(messageJson);
-
+        
             switch (message.DeviceType)
             {
                 case "LightSwitch":
@@ -100,6 +106,10 @@ namespace SSharpHomebridge
 
                 case "HeaterCooler":
                     TriggerHeaterCoolerMessage(message);
+                    break;
+
+                case "AirPurifier":
+                    TriggerAirPurifierMessage(message);
                     break;
 
                 case "Television":
@@ -135,7 +145,10 @@ namespace SSharpHomebridge
                     break;
             }
         }
-
+        public static string GetType(string messageJson){
+            var message = JsonConvert.DeserializeObject<Message>(messageJson);
+            return message.DeviceType
+        }
         public static string SerializeMessage(Message message)
         {
             return JsonConvert.SerializeObject(message);

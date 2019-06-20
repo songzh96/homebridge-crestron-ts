@@ -14,6 +14,7 @@ import { CarbonDioxideSensor } from './accessories/sensors/CarbonDioxideSensor';
 import { SmokeSensor } from './accessories/sensors/SmokeSensor';
 import { groupBy, each } from "lodash";
 import { Television } from 'homebridge-crestron-ts/src/accessories/Television';
+import { AirPurifier } from 'homebridge-crestron-ts/src/accessories/AirPurifier';
 
 const version = "2.0.0";
 
@@ -86,13 +87,20 @@ class Platform {
       to delimit them. We split the stream and retain messages where length > 0
      */
     this.socket.on('data', data => {
+
       const jsonMessages = data
         .toString()
         .split('||')
         .filter(jsonMessage => jsonMessage.length > 0);
-      jsonMessages.forEach(jsonMessage => {
-        const message = JSON.parse(jsonMessage);
-        
+      jsonMessages.forEach(async jsonMessage => {
+        // jsonMessage = jsonMessage.replace("\u0000","");
+        try {
+          var message = JSON.parse(jsonMessage);
+        } catch (error) {
+
+          throw (error);
+        }
+
         const {
           MessageType: messageType,
           DeviceType: deviceType,
@@ -197,6 +205,10 @@ class Platform {
 
           case 'HeaterCooler':
             accessories.push(new HeaterCooler(this.log, device, this));
+            return;
+
+          case 'AirPurifier':
+            accessories.push(new AirPurifier(this.log, device, this));
             return;
 
           case 'Television':

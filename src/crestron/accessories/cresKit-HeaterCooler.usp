@@ -1,0 +1,365 @@
+/*******************************************************************************************
+SIMPL+ Module Information
+(Fill in comments below)
+*******************************************************************************************/
+/*
+Dealer Name:
+System Name:
+System Number:
+Programmer: songzh
+Comments:
+*/
+
+/*******************************************************************************************
+Compiler Directives
+(Uncomment and declare compiler directives as needed)
+*******************************************************************************************/
+
+#SYMBOL_NAME "Homebridge-HeaterCooler"
+#HINT "This module is the heatercooler part of the homebridge"
+#PRINT_TO_TRACE
+#DEFAULT_VOLATILE
+#ENABLE_STACK_CHECKING
+#ENABLE_TRACE
+#CATEGORY "46" "cresKit" // Custom
+
+/*******************************************************************************************
+Include Libraries
+(Uncomment and include additional libraries as needed)
+
+Note:  Crestron does not recommend the use of the #INCLUDEPATH directive in SIMPL+ modules
+that are to be used in Crestron Studio.
+*******************************************************************************************/
+#INCLUDEPATH "C:\Program Files (x86)\Crestron\Simpl\Usrsplus\clz"
+#USER_SIMPLSHARP_LIBRARY "crestron-homebridge"
+
+
+/*******************************************************************************************
+DIGITAL, ANALOG and SERIAL INPUTS and OUTPUTS
+(Uncomment and declare inputs and outputs as needed)
+*******************************************************************************************/
+DIGITAL_INPUT AcPower_State[2];
+DIGITAL_INPUT _SKIP_,_SKIP_,_SKIP_;
+DIGITAL_INPUT Ac_AutoState[2];
+DIGITAL_INPUT _SKIP_;
+DIGITAL_INPUT Ac_HeaterState[2];
+DIGITAL_INPUT _SKIP_;
+DIGITAL_INPUT Ac_CoolerState[2];
+DIGITAL_INPUT _SKIP_;
+
+ANALOG_INPUT Ac_GetTargetTemperature[2];
+ANALOG_INPUT _SKIP_;
+ANALOG_INPUT Ac_CurrentTemperature[2];
+ANALOG_INPUT _SKIP_;
+STRING_INPUT Socket_Rx$[1][65000];
+STRING_INPUT _SKIP_;
+
+DIGITAL_OUTPUT AcPower_On[2];
+DIGITAL_OUTPUT AcPower_Off[2];
+DIGITAL_OUTPUT _SKIP_;
+DIGITAL_OUTPUT Ac_Auto[2];
+DIGITAL_OUTPUT _SKIP_;
+DIGITAL_OUTPUT Ac_Heater[2];
+DIGITAL_OUTPUT _SKIP_;
+DIGITAL_OUTPUT Ac_Cooler[2];
+DIGITAL_OUTPUT _SKIP_;
+
+ANALOG_OUTPUT Ac_TargetTemperature[2];
+ANALOG_OUTPUT _SKIP_,_SKIP_,_SKIP_,_SKIP_;
+STRING_OUTPUT Socket_Tx$[1];
+STRING_OUTPUT _SKIP_;
+
+/*******************************************************************************************
+Functions
+(Add any additional functions here)
+Note:  Functions must be physically placed before the location in
+		the code that calls them.
+*******************************************************************************************/
+
+Function ResponseMsg(Message msg)
+{
+	STRING ServerTx[500];
+	msg.MessageType = "Response";
+	Socket_Tx$[1] = MessageBroker.SerializeMessage(msg) + "||";
+	
+}
+
+Function EventMsg(Message msg)
+{
+	STRING ServerTx[500];
+	Socket_Tx$[1] = MessageBroker.SerializeMessage(msg) + "||";
+}
+
+EventHandler HeaterCoolerHandler(Message msg)
+{
+	INTEGER IsOn;
+	INTEGER Value;
+	STRING ServerTx[500];
+	IsOn = AcPower_State[msg.DeviceId];
+
+	if (msg.MessageType = "Request" && msg.Operation = "Get" && msg.Property = "Power")
+	{
+		Value = IsOn;
+		msg.Value = Value;
+		ResponseMsg(msg);
+	}
+
+	if (msg.MessageType = "Request" && msg.Operation = "Get" && msg.Property = "TargetState")
+	{
+		if (Ac_AutoState[msg.DeviceId] = 1)
+		{
+			Value = 0;
+		}
+		else if (Ac_CoolerState[msg.DeviceId] = 1)
+		{
+			Value = 2;
+		}
+		else if (Ac_HeaterState[msg.DeviceId] = 1)
+		{
+			Value = 1;
+		}
+		msg.Value = Value;
+		ResponseMsg(msg);
+	}
+
+	if (msg.MessageType = "Request" && msg.Operation = "Get" && msg.Property = "CurrentState")
+	{
+		if (Ac_AutoState[msg.DeviceId] = 1)
+		{
+			Value = 1;
+		}
+		else if (Ac_CoolerState[msg.DeviceId] = 1)
+		{
+			Value = 3;
+		}
+		else if (Ac_HeaterState[msg.DeviceId] = 1)
+		{
+			Value = 2;
+		}
+		
+		msg.Value = Value;
+		ResponseMsg(msg);
+	}
+
+	if (msg.MessageType = "Request" && msg.Operation = "Get" && msg.Property = "CurrentTemperature")
+	{
+		Value = Ac_CurrentTemperature[msg.DeviceId];
+		
+		msg.Value = Value;
+		ResponseMsg(msg);
+	}
+
+	if (msg.MessageType = "Request" && msg.Operation = "Get" && msg.Property = "TargetTemperature")
+	{
+		Value = Ac_GetTargetTemperature[msg.DeviceId];
+		
+		msg.Value = Value;
+		ResponseMsg(msg);
+	}
+
+	if (msg.MessageType = "Request" && msg.Operation = "Set" && msg.Property = "Power")
+	{
+		Value = msg.Value;
+
+		if (Value = 1 && IsOn = 0)
+		{
+			PULSE(1, AcPower_On[msg.DeviceId]);
+		}
+		else if (Value = 0 && IsOn = 1)
+		{
+			PULSE(1, AcPower_Off[msg.DeviceId]);
+		}
+		else
+		{
+			ResponseMsg(msg);
+		}
+	}
+	
+	if (msg.MessageType = "Request" && msg.Operation = "Set" && msg.Property = "TargetState")
+	{
+		Value = msg.Value;
+		ResponseMsg(msg);
+
+		
+		if (Value = 0 )
+		{
+			PULSE(1, Ac_Auto[msg.DeviceId]);
+		}
+		else if (Value = 1)
+		{
+			PULSE(1, Ac_Heater[msg.DeviceId]);
+		}
+		else if (Value = 2)
+		{
+			PULSE(1, Ac_Cooler[msg.DeviceId]);
+		}
+		
+	}
+
+	if (msg.MessageType = "Request" && msg.Operation = "Set" && msg.Property = "TargetTemperature")
+	{
+		ResponseMsg(msg);
+		
+		Value = msg.Value;
+
+		Ac_TargetTemperature[msg.DeviceId] = Value;
+
+	}
+
+	if (msg.MessageType = "Event" && msg.Operation = "Set" && msg.Property = "Power")
+	{
+		EventMsg(msg);
+	}
+
+	if (msg.MessageType = "Event" && msg.Operation = "Set" && msg.Property = "TargetState")
+	{
+		EventMsg(msg);
+	}
+
+	if (msg.MessageType = "Event" && msg.Operation = "Set" && msg.Property = "CurrentTemperature")
+	{
+		EventMsg(msg);
+	}
+
+	if (msg.MessageType = "Event" && msg.Operation = "Set" && msg.Property = "TargetTemperature")
+	{
+		EventMsg(msg);
+	}
+}
+
+
+/*******************************************************************************************
+Event Handlers
+(Uncomment and declare additional event handlers as needed)
+*******************************************************************************************/
+CHANGE AcPower_State
+{
+	Message msg;
+	INTEGER Id;
+	Id = GetLastModifiedArrayIndex();
+	
+	msg.MessageType = "Event";
+	msg.DeviceType = "HeaterCooler";
+	msg.DeviceId = Id;
+	msg.Operation = "Set";
+	msg.Property = "Power";
+	msg.Value = AcPower_State[Id];
+	MessageBroker.TriggerHeaterCoolerMessage(msg);
+	
+}
+
+PUSH Ac_CoolerState
+{
+	Message msg;
+	INTEGER Id;
+	Id = GetLastModifiedArrayIndex();
+	
+	msg.MessageType = "Event";
+	msg.DeviceType = "HeaterCooler";
+	msg.DeviceId = Id;
+	msg.Operation = "Set";
+	msg.Property = "TargetState";
+	msg.Value = 2;
+	MessageBroker.TriggerHeaterCoolerMessage(msg);
+	
+}
+
+PUSH Ac_AutoState
+{
+	Message msg;
+	INTEGER Id;
+	Id = GetLastModifiedArrayIndex();
+	
+	msg.MessageType = "Event";
+	msg.DeviceType = "HeaterCooler";
+	msg.DeviceId = Id;
+	msg.Operation = "Set";
+	msg.Property = "TargetState";
+	msg.Value = 0;
+	MessageBroker.TriggerHeaterCoolerMessage(msg);
+	
+}
+
+PUSH Ac_HeaterState
+{
+	Message msg;
+	INTEGER Id;
+	Id = GetLastModifiedArrayIndex();
+	
+	msg.MessageType = "Event";
+	msg.DeviceType = "HeaterCooler";
+	msg.DeviceId = Id;
+	msg.Operation = "Set";
+	msg.Property = "TargetState";
+	msg.Value = 1;
+	MessageBroker.TriggerHeaterCoolerMessage(msg);
+	
+}
+
+CHANGE Ac_CurrentTemperature
+{
+	Message msg;
+	INTEGER Id;
+	Id = GetLastModifiedArrayIndex();
+	
+	msg.MessageType = "Event";
+	msg.DeviceType = "HeaterCooler";
+	msg.DeviceId = Id;
+	msg.Operation = "Set";
+	msg.Property = "CurrentTemperature";
+	msg.Value = Ac_CurrentTemperature[msg.DeviceId];
+	MessageBroker.TriggerHeaterCoolerMessage(msg);
+	
+}
+
+CHANGE Ac_GetTargetTemperature
+{
+	Message msg;
+	INTEGER Id;
+	Id = GetLastModifiedArrayIndex();
+	
+	msg.MessageType = "Event";
+	msg.DeviceType = "HeaterCooler";
+	msg.DeviceId = Id;
+	msg.Operation = "Set";
+	msg.Property = "TargetTemperature";
+	msg.Value = Ac_GetTargetTemperature[msg.DeviceId];
+	MessageBroker.TriggerHeaterCoolerMessage(msg);
+}
+
+CHANGE Socket_Rx$
+{
+	STRING Temp$[65000];
+	STRING DeviceType[100];
+
+	Temp$ = Socket_Rx$[1];
+	DeviceType = MessageBroker.GetType(Temp$);
+	if (DeviceType = "HeaterCooler")
+	{
+		MessageBroker.ParseMessage(Temp$);
+	}
+	else{
+		return;
+	}
+
+}
+
+/*******************************************************************************************
+Main()
+Uncomment and place one-time startup code here
+(This code will get called when the system starts up)
+*******************************************************************************************/
+
+Function Main()
+{
+	RegisterEvent(MessageBroker, OnHeaterCoolerMessage, HeaterCoolerHandler);
+
+	WaitForInitializationComplete();
+	// If you are reading any Input or Output variables, uncomment
+	//   the WaitForInitializationComplete statement above and read
+	//   them afterwards.  Input/Output variables will not have
+	//   their correct values set until after the logic processor
+	//   runs and propagates the values to them.
+	
+	Print("Program started!!!.\n");
+}

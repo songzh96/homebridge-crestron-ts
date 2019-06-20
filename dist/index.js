@@ -3851,7 +3851,7 @@ class HeaterCooler extends BaseAccessory {
       CoolingThresholdTemperature.updateValue(value);
     });
     api.on(`Event-${this.type}-${this.id}-Set-TargetState`, async value => {
-      TargetHeaterCoolerState.updateValue(value);
+      await TargetHeaterCoolerState.updateValue(value);
       var currStateValue;
 
       if (value === 0) {
@@ -3957,7 +3957,7 @@ class LeakSensor extends BaseAccessory {
 
     const sensorState = leakSensorService.getCharacteristic(Characteristic.LeakDetected).on('get', getSensorState.bind(this));
     this.leakSensor = leakSensorService;
-    api.on(`Event-${this.type}-${this.id}-Get-sensorState`, value => {
+    api.on(`Event-${this.type}-${this.id}-Set-State`, value => {
       sensorState.updateValue(Boolean(value));
     });
     return [this.infoService, leakSensorService];
@@ -4021,7 +4021,7 @@ class CarbonMonoxideSensor extends BaseAccessory {
 
     const sensorState = CarbonMonoxideService.getCharacteristic(Characteristic.CarbonMonoxideDetected).on('get', getSensorState.bind(this));
     this.carbonMonoxideSensor = CarbonMonoxideService;
-    api.on(`Event-${this.type}-${this.id}-Get-sensorState`, value => {
+    api.on(`Event-${this.type}-${this.id}-Set-State`, value => {
       sensorState.updateValue(Boolean(value));
     });
     return [this.infoService, CarbonMonoxideService];
@@ -4053,7 +4053,7 @@ class CarbonDioxideSensor extends BaseAccessory {
 
     const sensorState = CarbonDioxideService.getCharacteristic(Characteristic.CarbonDioxideDetected).on('get', getSensorState.bind(this));
     this.carbonDioxideSensor = CarbonDioxideService;
-    api.on(`Event-${this.type}-${this.id}-Get-sensorState`, value => {
+    api.on(`Event-${this.type}-${this.id}-Set-State`, value => {
       sensorState.updateValue(Boolean(value));
     });
     return [this.infoService, CarbonDioxideService];
@@ -4085,7 +4085,7 @@ class SmokeSensor extends BaseAccessory {
 
     const sensorState = smokeSensorService.getCharacteristic(Characteristic.SmokeDetected).on('get', getSensorState.bind(this));
     this.smokeSensor = smokeSensorService;
-    api.on(`Event-${this.type}-${this.id}-Get-sensorState`, value => {
+    api.on(`Event-${this.type}-${this.id}-Set-State`, value => {
       sensorState.updateValue(Boolean(value));
     });
     return [this.infoService, smokeSensorService];
@@ -4187,6 +4187,49 @@ class Television extends BaseAccessory {
 
 }
 
+class AirPurifier extends BaseAccessory {
+  constructor(log, accessoryConfig, platform) {
+    super(log, accessoryConfig, platform);
+
+    _defineProperty(this, "airPurifierService", void 0);
+  }
+
+  getServices() {
+    const {
+      platform
+    } = this;
+    const {
+      api
+    } = platform;
+    const {
+      hap: {
+        Characteristic,
+        Service
+      }
+    } = api;
+    const AirPurifierService = new Service.AirPurifier();
+    const Power = AirPurifierService.getCharacteristic(Characteristic.Active).on("get", getPowerState.bind(this)).on("set", setPowerState.bind(this));
+    const TargetAirPurifierState = AirPurifierService.getCharacteristic(Characteristic.TargetAirPurifierState).on("get", getValue$1.bind(this, "TargetAirPurifierState")).on("set", setValue.bind(this, "TargetAirPurifierState"));
+    const CurrentAirPurifierState = AirPurifierService.getCharacteristic(Characteristic.CurrentAirPurifierState);
+    const RotationSpeed = AirPurifierService.getCharacteristic(Characteristic.RotationSpeed).on("get", getValue$1.bind(this, "RotationSpeed")).on("set", setValue.bind(this, "RotationSpeed"));
+    this.airPurifierService = AirPurifierService;
+    api.on(`Event-${this.type}-${this.id}-Set-Power`, value => {
+      Power.updateValue(value);
+    });
+    api.on(`Event-${this.type}-${this.id}-Set-TargetAirPurifierState`, value => {
+      TargetAirPurifierState.updateValue(value);
+    });
+    api.on(`Event-${this.type}-${this.id}-Set-CurrentAirPurifierState`, value => {
+      CurrentAirPurifierState.updateValue(value);
+    });
+    api.on(`Event-${this.type}-${this.id}-Set-RotationSpeed`, value => {
+      RotationSpeed.updateValue(value);
+    });
+    return [this.infoService, AirPurifierService];
+  }
+
+}
+
 const version = "2.0.0";
 function index (homebridge) {
   homebridge.registerPlatform('homebridge-crestron', 'CrestronS', Platform);
@@ -4256,8 +4299,14 @@ class Platform {
 
     this.socket.on('data', data => {
       const jsonMessages = data.toString().split('||').filter(jsonMessage => jsonMessage.length > 0);
-      jsonMessages.forEach(jsonMessage => {
-        const message = JSON.parse(jsonMessage);
+      jsonMessages.forEach(async jsonMessage => {
+        // jsonMessage = jsonMessage.replace("\u0000","");
+        try {
+          var message = JSON.parse(jsonMessage);
+        } catch (error) {
+          throw error;
+        }
+
         const {
           MessageType: messageType,
           DeviceType: deviceType,
@@ -4348,6 +4397,10 @@ class Platform {
 
           case 'HeaterCooler':
             accessories.push(new HeaterCooler(this.log, device, this));
+            return;
+
+          case 'AirPurifier':
+            accessories.push(new AirPurifier(this.log, device, this));
             return;
 
           case 'Television':

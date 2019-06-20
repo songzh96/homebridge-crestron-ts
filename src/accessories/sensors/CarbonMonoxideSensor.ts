@@ -23,7 +23,7 @@ export class CarbonMonoxideSensor extends BaseAccessory {
 
     this.carbonMonoxideSensor = CarbonMonoxideService;
 
-    api.on(`Event-${this.type}-${this.id}-Get-sensorState`, (value: any) => {
+    api.on(`Event-${this.type}-${this.id}-Set-State`, (value: any) => {
       sensorState.updateValue(Boolean(value));
     });
 

@@ -752,6 +752,7 @@ Function SocketRx()
 	{
 		Temp$ = Remove("||",InternalRxBuffer);
     	Temp$ = Left(Temp$, (Len(Temp$)-2));
+		print("Temp$  %s\n",Temp$);
 		MessageBroker.ParseMessage(Temp$);
 	}
 }
@@ -906,8 +907,7 @@ CHANGE OccupancySensor_State
 	msg.Operation = "Set";
 	msg.Property = "State";
 	msg.Value = OccupancySensor_State[Id];
-	MessageBroker.TriggerSensorStateMessage(msg);
-	
+	MessageBroker.TriggerSensorStateMessage(msg);	
 }
 
 CHANGE Get_CurrentPosition

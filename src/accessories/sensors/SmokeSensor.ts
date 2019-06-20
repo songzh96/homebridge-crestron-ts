@@ -23,8 +23,9 @@ export class SmokeSensor extends BaseAccessory {
 
     this.smokeSensor = smokeSensorService;
 
-    api.on(`Event-${this.type}-${this.id}-Get-sensorState`, (value: any) => {
+    api.on(`Event-${this.type}-${this.id}-Set-State`, (value: any) => {
       sensorState.updateValue(Boolean(value));
+      
     });
 
     return [this.infoService, smokeSensorService];
