@@ -147,8 +147,9 @@ namespace SSharpHomebridge
         }
         public static string GetType(string messageJson){
             var message = JsonConvert.DeserializeObject<Message>(messageJson);
-            return message.DeviceType
+            return message.DeviceType;
         }
+
         public static string SerializeMessage(Message message)
         {
             return JsonConvert.SerializeObject(message);

@@ -2,7 +2,6 @@ import { BaseAccessory } from "homebridge-crestron-ts/src/accessories/BaseAccess
 import {
   getValue, setValue, setPowerState, getPowerState
 } from "homebridge-crestron-ts/src/accessories/Callbacks";
-import { timeout } from "homebridge-crestron-ts/src/unit/unit";
 
 export class AirPurifier extends BaseAccessory {
   airPurifierService: any;

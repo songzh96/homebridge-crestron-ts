@@ -171,14 +171,7 @@ STRING InternalRxBuffer[65000];
 Function StartServer()
 {
   SIGNED_INTEGER Status;
-	RegisterEvent(MessageBroker, OnLightSwitchMessage, LightSwitchMessageHandler);
-	RegisterEvent(MessageBroker, OnLightDimmerMessage, LightDimmerMessageHandler);
-	RegisterEvent(MessageBroker, OnSwitchMessage, SwitchMessageHandler);
-	RegisterEvent(MessageBroker, OnFanMessage, FanMessageHandler);
-	RegisterEvent(MessageBroker, OnSensorStateMessage, SensorStateMessageHandler);
-	RegisterEvent(MessageBroker, OnWindowCoveringMessage, WindowCoveringHandler);
-	RegisterEvent(MessageBroker, OnHeaterCoolerMessage, HeaterCoolerHandler);
-	RegisterEvent(MessageBroker, OnTelevisionMessage, TelevisionHandler);
+	
 
 	Status = SocketServerStartListen(TCPServer, IPAddress, Port);
 
@@ -212,7 +205,7 @@ Function ResponseMsg(Message msg)
 
 Function EventMsg(Message msg)
 {
-	STRING ServerTx[128];
+	STRING ServerTx[500];
 	ServerTx = MessageBroker.SerializeMessage(msg) + "||";
 	SocketTx(ServerTx);
 }
@@ -1111,6 +1104,14 @@ SOCKETSTATUS TCPServer
 
 Function Main()
 {
+	RegisterEvent(MessageBroker, OnLightSwitchMessage, LightSwitchMessageHandler);
+	RegisterEvent(MessageBroker, OnLightDimmerMessage, LightDimmerMessageHandler);
+	RegisterEvent(MessageBroker, OnSwitchMessage, SwitchMessageHandler);
+	RegisterEvent(MessageBroker, OnFanMessage, FanMessageHandler);
+	RegisterEvent(MessageBroker, OnSensorStateMessage, SensorStateMessageHandler);
+	RegisterEvent(MessageBroker, OnWindowCoveringMessage, WindowCoveringHandler);
+	RegisterEvent(MessageBroker, OnHeaterCoolerMessage, HeaterCoolerHandler);
+	RegisterEvent(MessageBroker, OnTelevisionMessage, TelevisionHandler);
     WaitForInitializationComplete();
     // If you are reading any Input or Output variables, uncomment
     //   the WaitForInitializationComplete statement above and read
