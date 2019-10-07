@@ -2,7 +2,7 @@ import { BaseAccessory } from "./BaseAccessory";
 import {
   getPosition, setTargetPosition
 } from "./Callbacks";
-import { timeout } from "homebridge-crestron-ts/src/unit/unit";
+import { timeout } from "../unit/unit";
 
 export class WindowCovering extends BaseAccessory {
   windowCoveringService: any;

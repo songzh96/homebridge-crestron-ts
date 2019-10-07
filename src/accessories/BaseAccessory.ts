@@ -1,4 +1,4 @@
-import { uuid } from "homebridge-crestron-ts/src/unit/unit";
+import { uuid } from "../unit/unit";
 
 export class BaseAccessory {
   log: Function;

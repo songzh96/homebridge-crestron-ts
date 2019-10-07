@@ -13,8 +13,8 @@ import { CarbonMonoxideSensor } from './accessories/sensors/CarbonMonoxideSensor
 import { CarbonDioxideSensor } from './accessories/sensors/CarbonDioxideSensor';
 import { SmokeSensor } from './accessories/sensors/SmokeSensor';
 import { groupBy, each } from "lodash";
-import { Television } from 'homebridge-crestron-ts/src/accessories/Television';
-import { AirPurifier } from 'homebridge-crestron-ts/src/accessories/AirPurifier';
+import { Television } from '../src/accessories/Television';
+import { AirPurifier } from '../src/accessories/AirPurifier';
 
 const version = "2.0.0";
 
@@ -41,8 +41,8 @@ class Platform {
 
     //handle socket close
     this.socket.on('close', () => {
-      this.log('Connection Lost. Attempting to reconnect in 10 seconds...');
-      this.socket.setTimeout(10000, () => {
+      this.log('Connection Lost. Attempting to reconnect in 2 seconds...');
+      this.socket.setTimeout(2000, () => {
         this.socket.connect(
           port,
           host,

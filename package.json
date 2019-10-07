@@ -4,7 +4,7 @@
   "description": "Crestron support for Homebridge",
   "engines": {
     "node": ">=8.11.4",
-    "homebridge": ">=0.2.0"
+    "homebridge": ">=0.4.5"
   },
   "main": "dist/index.js",
   "files": [
